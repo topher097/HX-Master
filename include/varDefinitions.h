@@ -29,7 +29,6 @@ namespace varDefinitions
     float averageBoilSurfaceTemp = 1.0;
     
     // Thermocouple for inlet flow temp vars
-    float tempThermoTemperature;
     float inletFluidTemperature = 1.0;
 
     // Logging vars
@@ -39,11 +38,19 @@ namespace varDefinitions
     unsigned long int testTimeStart;            // time of when program starts
 
     // Piezo control vars
-    bool inPhase = true;                // Piezos are in phase with each other
-    int frequency1 = 0;                 // Frequency of piezo 1 in Hz
-    int frequency2 = 0;                 // Frequency of piezo 2 in Hz
+    bool inPhase = true;        // Piezos are in phase with each other
+    float frequency1;           // Frequency of left channel piezo in Hz
+    float frequency2;           // Frequency of right channel piezo in Hz
+    float amplitude1;           // Amplitude of sine wave 1 (left cahnnel); 0-1
+    float amplitude2;           // Amplitude of sine wave 2 (right channel); 0-1
+    float phase1;               // Phase of left channel signal in degrees
+    float phase2;               // Phase of right channel signal in degrees
+    int enable1;                // Enable pin for piezo driver 1
+    int enable2;                // Enable pin for piezo driver 2
+    String phaseText = "";      // Text for LCD screen
+
+    // Heater module cartridge controller vars
     int heatEnergyDensity = 50;         // Desired effective wattage per cm^2 to be pumped through heater modules
-    std::string phaseText = "";         // Text for LCD screen
 
     // Protection vars
     bool safeHeater = true;
@@ -54,14 +61,12 @@ namespace varDefinitions
     float inletMaxTemp = 65;            // degree celcius
 
     // Serial communcation between teensys vars
-    uint16_t rx_byte;                  // COM rx
-    uint16_t tx_byte;                  // COM tx
-    uint16_t rx1_byte;                 // Teensy slave rx
-    uint16_t tx1_byte;                 // Teensy slave tx
+    uint16_t rx1_byte;                  // Teensy slave rx
+    uint16_t tx1_byte;                  // Teensy slave tx
 
     // Blink vars
     int ledState = LOW;
-    const int blinkDelay = 100;         // delay in ms
+    const int blinkDelay = 500;         // delay in ms
 }
 
 #endif
