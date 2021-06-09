@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 #include <string>
+#include <defaultPiezo.h>
+
+using namespace defaultPiezoProperties;
 
 namespace varDefinitions
 {
@@ -39,14 +42,6 @@ namespace varDefinitions
 
     // Piezo control vars
     bool inPhase = true;        // Piezos are in phase with each other
-    float frequency1;           // Frequency of left channel piezo in Hz
-    float frequency2;           // Frequency of right channel piezo in Hz
-    float amplitude1;           // Amplitude of sine wave 1 (left cahnnel); 0-1
-    float amplitude2;           // Amplitude of sine wave 2 (right channel); 0-1
-    float phase1;               // Phase of left channel signal in degrees
-    float phase2;               // Phase of right channel signal in degrees
-    int enable1;                // Enable pin for piezo driver 1
-    int enable2;                // Enable pin for piezo driver 2
     String phaseText = "";      // Text for LCD screen
 
     // Heater module cartridge controller vars

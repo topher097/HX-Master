@@ -15,15 +15,22 @@
 // Hardware serial (UART)
 #define SLAVE_SERIAL Serial8
 
+// Hardware I2C
+
+
 // Header files
 #include <coeffDefinitions.h>       // Header file with interpolation function coefficients
 #include <pinDefinitions.h>         // Header file with all master teensy pin definitions
 #include <varDefinitions.h>         // Header file with all other variables used
+#include <calculations.h>           // Header file with calculations of temps and pressures
+#include <slaveUART.h>              // Header file for encoding and decoding UART to/from slave
+#include <defaultPiezo.h>           // Header file with default piezo driving properties
 
 // Namespaces
 using namespace varDefinitions;
 using namespace pinDefinitions;
 using namespace coeffDefinitions;
+using namespace defaultPiezoProperties;
 using namespace std;
 
 // I2C devices
@@ -45,79 +52,19 @@ void blinkLED() {
       ledState = LOW;
     }
   digitalWrite(BLINK, ledState);
-  Serial.println("BLINK");
+  //Serial.println("BLINK");
 }
 
-// Calculate the temperature of the heater module thermistor using interpolation function and voltage read from pin
-float calcTempHeaterModuleThermistor(float V){
-  // Note that the analog value is anwhere from 0 to 4095, so that value is converted to 0 to 3.3V in interpolation function automatically
-  float tempTemperature = HMcoef0*pow(V, 0) + HMcoef1*pow(V, 1) + HMcoef2*pow(V, 2) + HMcoef3*pow(V, 3) + HMcoef4*pow(V, 4) + HMcoef5*pow(V, 5) + HMcoef6*pow(V, 6) + HMcoef7*pow(V, 7) + HMcoef8*pow(V, 8) + HMcoef9*pow(V, 9) + HMcoef10*pow(V, 10) + HMcoef11*pow(V, 11);
-  return tempTemperature;
-}
-
-// Calculate the temperature of the boil surface thermistor using interpolation function and voltage read from pin
-float calcTempBoilSurfaceThermistor(float V){
-  // Note that the analog value is anwhere from 0 to 4095, so that value is converted to 0 to 3.3V in interpolation function automatically
-  float tempTemperature = BScoef0*pow(V, 0) + BScoef1*pow(V, 1) + BScoef2*pow(V, 2) + BScoef3*pow(V, 3) + BScoef4*pow(V, 4) + BScoef5*pow(V, 5) + BScoef6*pow(V, 6) + BScoef7*pow(V, 7);
-  return tempTemperature;
-}
-
-// Calculate the pressure of the pressure transducer using interpolation function and voltage read from pin
-// 30 psia sensor, 10V-15V drive, 100mV output
-float calcPressure(float V){
-  // Get the analog value and convert to psi
-  float tempPressure = Pcoef0*pow(V, 0) + Pcoef1*pow(V, 1);
-  return tempPressure;
-}
-
-// Calculate the inlet flow rate using the two pressure measurements from inlet sensors
-float calcInletFlowRate(){
-  float valveOpenCv = 0.0818;                 // gal/min fully open on valve 2
-  float galpermin_to_mlpermin = 3785.41;      // 1 gal/min is 3785.41 mL/min
-  float sg = 1.54;                            // fluid specific gravity
-  inletFlowRate = valveOpenCv * sqrt(abs(inletPressureUpstream - inletPressureDownstream)/sg);
-  return inletFlowRate;
-}
-
-// Encode the piezo properties for serial as type String()
-String encodeSlaveUART(){
-  String encodedUART;
-  encodedUART += (String)frequency1;
-  encodedUART += (String)frequency2;
-  encodedUART += (String)amplitude1;
-  encodedUART += (String)amplitude2;
-  encodedUART += (String)phase1;
-  encodedUART += (String)phase2;
-  encodedUART += (String)enable1;
-  encodedUART += (String)enable2;
-  return encodedUART;
-}
-
-// Decode the piezo properties from serial
-void decodeSlaveUART(string incomingBytes){
-  vector<float> v;
-  stringstream ss(incomingBytes);
-  
-  // Split comma separated string into different elements and add to vector 
-  while (ss.good()){
-    string substr;
-    float temp;
-    getline(ss, substr, ',');
-    istringstream ss2(substr);
-    ss2 >> temp;
-    v.push_back(temp);
-  }
-  
-  // Take elements of vector and save to appropriate variables
-  int i = 1;
-  frequency1 = v[i]; i++;
-  frequency2 = v[i]; i++;
-  amplitude1 = v[i]; i++;
-  amplitude2 = v[i]; i++;
-  phase1     = v[i]; i++;
-  phase2     = v[i]; i++;
-  enable1    = (int)v[i]; i++;
-  enable2    = (int)v[i];
+// Reset the piezo properties to the default values
+void resetPiezoProperties() {
+    float frequency1 = default_frequency1;    // Frequency of left channel piezo in Hz
+    float frequency2 = default_frequency2;    // Frequency of right channel piezo in Hz
+    float amplitude1 = default_amplitude1;    // Amplitude of sine wave 1 (left cahnnel); 0-1
+    float amplitude2 = default_amplitude2;    // Amplitude of sine wave 2 (right channel); 0-1
+    float phase1 = default_phase1;            // Phase of left channel signal in degrees
+    float phase2 = default_phase2;            // Phase of right channel signal in degrees
+    int enable1 = default_enable1;            // Enable pin for piezo driver 1
+    int enable2 = default_enable2;            // Enable pin for piezo driver 2
 }
 
 // Send current data to serial port
@@ -249,11 +196,15 @@ void getData(){
   inletFluidTemperature = thermocouple.readCelsius();            // degree celcius
 }
 
+// Send data to the slave teensy (on interupt)
 void sendDataSlave(){
   SLAVE_SERIAL.println(encodeSlaveUART());
 }
 
 void setup() {
+  // Setup default piezo properties
+  resetPiezoProperties();
+
   // Initialize pinmodes
   pinMode(BLINK, OUTPUT);   // Status LED
   pinMode(P1, INPUT);       // Inlet upstream pressure sensor (from op-amp)
@@ -278,6 +229,7 @@ void setup() {
   pinMode(IFT_CS, OUTPUT);  // CS pin for inlet fluid thermocouple
 
   // Setup LCD
+  lcd.init();
   lcd.backlight();
   lcd.begin(20, 4);
   updateLCD();
@@ -326,6 +278,7 @@ void loop() {
   }
   // Check if new serial from slave teensy
   if (SLAVE_SERIAL.available() > 0) {
+    Serial.println('HI');
     incomingByte = SLAVE_SERIAL.readString();
     Serial.print("UART received: ");
     Serial.println(incomingByte);
