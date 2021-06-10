@@ -14,6 +14,9 @@ using namespace std;
 String encodeSlaveUART(){
   String encodedUART;
   String del = ",";
+  String startString = "";
+  String endString = "\r\n";
+  encodedUART += startString;       // Add start string
   vector<float> vars = {frequency1, frequency2, amplitude1, amplitude2, phase1, phase2, (float)enable1, (float)enable2};
   for (size_t i = 0; i < vars.size(); i++){
     encodedUART += (String)vars[i];
@@ -21,6 +24,7 @@ String encodeSlaveUART(){
       encodedUART += del;
     }
   }
+  encodedUART += endString;         // Add end string
   return encodedUART;
 }
 

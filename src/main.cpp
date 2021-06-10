@@ -11,11 +11,14 @@
 #include <Adafruit_MAX31855.h>    // Thermocouple amplifier module
 #include <SD.h>                   // For logging to SD card
 #include <SPI.h>                  // For SPI card access
+#include <i2c_t3.h>               // For multiple I2C channels
 
 // Hardware serial (UART)
 #define SLAVE_SERIAL Serial8
 
 // Hardware I2C
+
+
 
 
 // Header files
@@ -33,6 +36,7 @@ using namespace coeffDefinitions;
 using namespace defaultPiezoProperties;
 using namespace std;
 
+
 // I2C devices
 LiquidCrystal_I2C lcd(0x27,20,4);         // Address for LCD
 
@@ -43,6 +47,9 @@ Adafruit_MAX31855 thermocouple(IFT_CS);                         // Hardware SPI 
 // Timer objects
 IntervalTimer blinkTimer;
 IntervalTimer dataSlaveSend;
+
+// Special characters for LCD
+uint8_t backSlashLCD [8]= { 0x00, 0x10, 0x08, 0x04, 0x02, 0x01, 0x00, 0x00 };
 
 // Blink the status LED
 void blinkLED() {
@@ -57,14 +64,14 @@ void blinkLED() {
 
 // Reset the piezo properties to the default values
 void resetPiezoProperties() {
-    float frequency1 = default_frequency1;    // Frequency of left channel piezo in Hz
-    float frequency2 = default_frequency2;    // Frequency of right channel piezo in Hz
-    float amplitude1 = default_amplitude1;    // Amplitude of sine wave 1 (left cahnnel); 0-1
-    float amplitude2 = default_amplitude2;    // Amplitude of sine wave 2 (right channel); 0-1
-    float phase1 = default_phase1;            // Phase of left channel signal in degrees
-    float phase2 = default_phase2;            // Phase of right channel signal in degrees
-    int enable1 = default_enable1;            // Enable pin for piezo driver 1
-    int enable2 = default_enable2;            // Enable pin for piezo driver 2
+    frequency1 = default_frequency1;    // Frequency of left channel piezo in Hz
+    frequency2 = default_frequency2;    // Frequency of right channel piezo in Hz
+    amplitude1 = default_amplitude1;    // Amplitude of sine wave 1 (left cahnnel); 0-1
+    amplitude2 = default_amplitude2;    // Amplitude of sine wave 2 (right channel); 0-1
+    phase1 = default_phase1;            // Phase of left channel signal in degrees
+    phase2 = default_phase2;            // Phase of right channel signal in degrees
+    enable1 = default_enable1;            // Enable pin for piezo driver 1
+    enable2 = default_enable2;            // Enable pin for piezo driver 2
 }
 
 // Send current data to serial port
@@ -109,40 +116,65 @@ void sendData(){
 // Checks if all of the thermistors don't have a thermal runaway, if there is a thermal runaway detected, turn off experiment
 void checkThermalRunaway(){
   // Heater modules
-  if (heaterTemperature1 >= heaterMaxTemp || heaterTemperature2 >= heaterMaxTemp || heaterTemperature3 >= heaterMaxTemp || heaterTemperature4 >= heaterMaxTemp || heaterTemperature5 >= heaterMaxTemp){
-    safeHeater = false;
-  }
+  if (heaterTemperature1 >= heaterMaxTemp || heaterTemperature2 >= heaterMaxTemp || heaterTemperature3 >= heaterMaxTemp || heaterTemperature4 >= heaterMaxTemp || heaterTemperature5 >= heaterMaxTemp){safeHeater = false;}
 
   // Boil surface
-  if (boilSurfaceTemperature1 >= boilSurfaceMaxTemp || boilSurfaceTemperature2 >= boilSurfaceMaxTemp || boilSurfaceTemperature3 >= boilSurfaceMaxTemp || boilSurfaceTemperature4 >= boilSurfaceMaxTemp){
-    safeBoilSurface = false;
-  }
+  if (boilSurfaceTemperature1 >= boilSurfaceMaxTemp || boilSurfaceTemperature2 >= boilSurfaceMaxTemp || boilSurfaceTemperature3 >= boilSurfaceMaxTemp || boilSurfaceTemperature4 >= boilSurfaceMaxTemp){safeBoilSurface = false;}
   
   // Rope heater/inlet temp
-  if (inletFluidTemperature >= inletMaxTemp){
-    safeInletTemp = false;
-  }
+  if (inletFluidTemperature >= inletMaxTemp){safeInletTemp = false;}
 
   // If thermal runaway, run safety shut off and display error
-  if (!safeBoilSurface || !safeHeater){
-    while (true){
-      // Turns off all heaters when thermal runaway occurs
-      digitalWrite(HMD1, LOW);    // Turn off heater module 1
-      digitalWrite(HMD2, LOW);    // Turn off heater module 2
-      digitalWrite(HMD3, LOW);    // Turn off heater module 3
-      digitalWrite(HMD4, LOW);    // Turn off heater module 4
-      digitalWrite(HMD5, LOW);    // Turn off heater module 5
-      digitalWrite(RHD, LOW);     // Turn off rope heater
+  if (!safeBoilSurface || !safeHeater || !safeInletTemp){
+    // Clear the LCD for thermal runaway error message
+    lcd.clear();
 
+    // Turns off all heaters when thermal runaway occurs
+    digitalWrite(HMD1, LOW);    // Turn off heater module 1
+    digitalWrite(HMD2, LOW);    // Turn off heater module 2
+    digitalWrite(HMD3, LOW);    // Turn off heater module 3
+    digitalWrite(HMD4, LOW);    // Turn off heater module 4
+    digitalWrite(HMD5, LOW);    // Turn off heater module 5
+    digitalWrite(RHD, LOW);     // Turn off rope heater
+
+    // Set true or false strings for printing
+    String _true = "True";
+    String _false = "False";
+    String safeHeaterString = "";
+    String safeBoilSurfaceString = "";
+    String safeInletTempString = "";
+    if (safeHeater){safeHeaterString = _true;} else {safeHeaterString = _false;}
+    if (safeBoilSurface){safeBoilSurfaceString = _true;} else {safeBoilSurfaceString = _false;}
+    if (safeInletTemp){safeInletTempString = _true;} else {safeInletTempString = _false;}
+    
+
+
+    // Run until system is reset, refresh screen every second
+    u_int16_t errorTimeStart = millis();
+    u_int16_t errorDisplayRefresh = 1000;     // Refresh time in ms
+    char loadingSymbolVect[4] = {"|/-"};
+    char loadingSybol;
+    u_int16_t step = 0;
+    while (true){
       // Displays error message on the LCD panel
-      lcd.setCursor(0, 0);
-      lcd.print("THERMAL RUNAWAY");
-      lcd.setCursor(0, 1);
-      lcd.print("Heaters safe:" + (String)safeHeater);
-      lcd.setCursor(0, 2);
-      lcd.print("Inlet safe: " + (String)safeInletTemp);
-      lcd.setCursor(0, 3);
-      lcd.print("BS safe: " + (String)safeBoilSurface);
+      if (millis() - errorTimeStart >= errorDisplayRefresh){
+        // Get current loading symbol
+        if (step < 3){loadingSybol = loadingSymbolVect[step]; step++;}
+        else {loadingSybol = char(0); step = 0;}
+        
+        // Display to screen
+        lcd.setCursor(0, 0);
+        lcd.print("THERMAL RUNAWAY  ");
+        lcd.print(loadingSybol);
+        lcd.setCursor(0, 1);
+        lcd.print("Heaters safe: " + safeHeaterString);
+        lcd.setCursor(0, 2);
+        lcd.print("In temp safe: " + safeInletTempString);
+        lcd.setCursor(0, 3);
+        lcd.print("BS temp safe: " + safeBoilSurfaceString);
+        errorTimeStart = millis();
+
+      }
     }
   }
 
@@ -228,18 +260,22 @@ void setup() {
   pinMode(RHD, OUTPUT);     // Rope heater
   pinMode(IFT_CS, OUTPUT);  // CS pin for inlet fluid thermocouple
 
+  // Begin SPI bus
+  SPI.begin();
+
+  // Begin I2C bus
+  Wire.begin();
+
   // Setup LCD
   lcd.init();
   lcd.backlight();
   lcd.begin(20, 4);
+  lcd.createChar(0, backSlashLCD);
   updateLCD();
-
-  // Begin SPI bus
-  SPI.begin();
 
   // Serial initialization
   Serial.begin(115200);     // To MATLAB
-  SLAVE_SERIAL.begin(9600);      // To Teensy4.0 Slave
+  SLAVE_SERIAL.begin(115200);      // To Teensy4.0 Slave
 
   // Initialize data timer
   dataStartTime = millis(); // change to interupt
@@ -258,7 +294,7 @@ void setup() {
 void loop() {
   // Check if time to read and send/log data
   if (millis()-dataStartTime >= dataDelay){
-    getData();                                  // Get sensor data
+    //getData();                                  // Get sensor data
     testTime = millis() - testTimeStart;        // Get current test time
     dataStartTime = millis();                   // Restart timer for data
     sendData();                                 // Send data
@@ -267,25 +303,25 @@ void loop() {
   }
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
-  String incomingByte;
-  if (Serial.available() > 0) {
-    incomingByte = Serial.readString();
-    Serial.print("USB received: ");
-    Serial.println(incomingByte);
-    // decodeMATLABSerial();
-    String sendSlave = encodeSlaveUART();     // Send update piezo bytes to slave
-    SLAVE_SERIAL.println(sendSlave);
-  }
-  // Check if new serial from slave teensy
-  if (SLAVE_SERIAL.available() > 0) {
-    Serial.println('HI');
-    incomingByte = SLAVE_SERIAL.readString();
-    Serial.print("UART received: ");
-    Serial.println(incomingByte);
-    decodeSlaveUART(incomingByte.c_str());
-    SLAVE_SERIAL.print("UART received:");
-    SLAVE_SERIAL.println(incomingByte);
-  }
+  // String incomingByte;
+  // if (Serial.available() > 0) {
+  //   incomingByte = Serial.readString();
+  //   Serial.print("USB received: ");
+  //   Serial.println(incomingByte);
+  //   // decodeMATLABSerial();
+  //   String sendSlave = encodeSlaveUART();     // Send update piezo bytes to slave
+  //   SLAVE_SERIAL.println(sendSlave);
+  // }
+  // // Check if new serial from slave teensy
+  // if (SLAVE_SERIAL.available() > 0) {
+  //   Serial.println("HI");
+  //   incomingByte = SLAVE_SERIAL.readString();
+  //   Serial.print("UART received: ");
+  //   Serial.println(incomingByte);
+  //   decodeSlaveUART(incomingByte.c_str());
+  //   SLAVE_SERIAL.print("UART received:");
+  //   SLAVE_SERIAL.println(incomingByte);
+  // }
   
 
   // Control heater modules
