@@ -23,7 +23,7 @@ float calcTempHeaterModuleThermistor(float V){
 float calcTempBoilSurfaceThermistor(float V){
   // Note that the analog value is anwhere from 0 to 4095, so that value is converted to 0 to 3.3V in interpolation function automatically
   float tempTemperature = BScoef0*pow(V, 0) + BScoef1*pow(V, 1) + BScoef2*pow(V, 2) + BScoef3*pow(V, 3) + BScoef4*pow(V, 4) + BScoef5*pow(V, 5) + BScoef6*pow(V, 6) + BScoef7*pow(V, 7);
-  return tempTemperature;
+  return tempTemperature + boilSurfaceTempOffset;
 }
 
 // Calculate the pressure of the pressure transducer using interpolation function and voltage read from pin

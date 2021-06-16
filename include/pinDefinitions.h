@@ -17,6 +17,7 @@ namespace pinDefinitions
     const int BST2 = A12;      // Boil surface thermistor 2
     const int BST3 = A11;      // Boil surface thermistor 3
     const int BST4 = A10;      // Boil surface thermistor 4
+    const int POT = A7;        // Valve potentiometer
     const int RX1  = 0;        // UART RX1
     const int TX1  = 1;        // UART TX1
     const int HMD1 = 2;        // MOSFET for heater module 1
@@ -25,7 +26,7 @@ namespace pinDefinitions
     const int HMD4 = 5;        // MOSFET for heater module 4
     const int HMD5 = 6;        // MOSFET for heater module 5
     const int RHD = 7;         // MOSFET for rope heater
-    const int IFT_CS = 10;     // CS pin for thermocouple MAX31855 module
+    const int IFT_CS = 37;     // CS pin for thermocouple MAX31855 module
     const int IFT_MISO = 12;   // MISO pin for thermocouple MAX31855 module
     const int IFT_SCK = 13;    // SCK pin for thermocouple MAX31855 
 }

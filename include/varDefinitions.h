@@ -30,19 +30,22 @@ namespace varDefinitions
     float boilSurfaceTemperature3 = 1.0;
     float boilSurfaceTemperature4 = 1.0;
     float averageBoilSurfaceTemp = 1.0;
+    float heaterModuleTempOffset = 0.0;
+    float boilSurfaceTempOffset = -366.25;
     
     // Thermocouple for inlet flow temp vars
     float inletFluidTemperature = 1.0;
 
+    // Valve potentiometer vars
+    int16_t valveRotation;
+    
+
     // Logging vars
-    unsigned int dataDelay = 500;                // time between data read and transfer in milliseconds
+    unsigned int dataDelay = 200;                // time between data read and transfer in milliseconds
     unsigned int dataStartTime;                 // start time after data read and sent
     unsigned long int testTime;                 // time since program started in milliseconds
     unsigned long int testTimeStart;            // time of when program starts
-
-    // Piezo control vars
-    bool inPhase = true;        // Piezos are in phase with each other
-    String phaseText = "";      // Text for LCD screen
+    double testTimePrint;
 
     // Heater module cartridge controller vars
     int heatEnergyDensity = 50;         // Desired effective wattage per cm^2 to be pumped through heater modules

@@ -47,17 +47,23 @@ Adafruit_MAX31855 thermocouple(IFT_CS);                         // Hardware SPI 
 // Timer objects
 IntervalTimer blinkTimer;
 IntervalTimer dataSlaveSend;
+IntervalTimer updateLCDTimer;
 
 // Special characters for LCD
 uint8_t backSlashLCD [8]= { 0x00, 0x10, 0x08, 0x04, 0x02, 0x01, 0x00, 0x00 };
+
+// Analog resolution
+int16_t analogResolution = 12;                          // 12 bit resolution
+int16_t maxAnalog = pow(2, analogResolution)-1;          // Max analog resolution 2^(analogResolution)-1
 
 // Blink the status LED
 void blinkLED() {
   if (ledState == LOW) {
       ledState = HIGH;
-    } else {
+  } 
+  else {
       ledState = LOW;
-    }
+  }
   digitalWrite(BLINK, ledState);
   //Serial.println("BLINK");
 }
@@ -76,7 +82,7 @@ void resetPiezoProperties() {
 
 // Send current data to serial port
 void sendData(){
-    Serial.print(testTime);
+    Serial.print(testTimePrint);
     Serial.print(',');
     Serial.print(inletPressureUpstream);
     Serial.print(',');
@@ -126,6 +132,9 @@ void checkThermalRunaway(){
 
   // If thermal runaway, run safety shut off and display error
   if (!safeBoilSurface || !safeHeater || !safeInletTemp){
+    // Turn off updateLCDTimer
+    updateLCDTimer.end();
+    
     // Clear the LCD for thermal runaway error message
     lcd.clear();
 
@@ -182,46 +191,58 @@ void checkThermalRunaway(){
 
 // Update the LCD screen
 void updateLCD(){
-  if (inPhase){
-    phaseText = "in phase";
-  }
-  else{
-    phaseText = "out phase";
-  }
-
   lcd.setCursor(0, 0);
-  lcd.print((String)frequency1 + "Hz, " + phaseText);
-  lcd.setCursor(0, 1);
   lcd.print("Flow rate: " + (String)round(inletFlowRate) + "mL/min");
+  lcd.setCursor(0, 1);
+  lcd.print("Fluid temp: " + (String)inletFluidTemperature + "C");
   lcd.setCursor(0, 2);
-  lcd.print("Avg. boil surf: " + (String)round(averageBoilSurfaceTemp) + "C");
+  lcd.print("Avg. BS temp: " + (String)round(averageBoilSurfaceTemp) + "C");
   lcd.setCursor(0, 3);
-  lcd.print("E Density: " + (String)round(heatEnergyDensity) + "W/cm^3");
+  lcd.print("E flux: " + (String)round(heatEnergyDensity) + "W/cm^2");
+  //Serial.println("LCD UPDATE");
 }
 
 // Get all sensor data anc calculate the appropriate variables
 void getData(){
   // Read and calculate pressure sensor values
-  inletPressureUpstream = calcPressure(analogRead(P1));      // psi
-  inletPressureDownstream = calcPressure(analogRead(P2));    // psi
-  outletPressureVapor = calcPressure(analogRead(P3));        // psi
-  outletPressureLiquid = calcPressure(analogRead(P4));       // psi
+  inletPressureUpstream = calcPressure((float)analogRead(P1)/maxAnalog*3.3);      // psi
+  inletPressureDownstream = calcPressure((float)analogRead(P2)/maxAnalog*3.3);    // psi
+  outletPressureVapor = calcPressure((float)analogRead(P3)/maxAnalog*3.3);        // psi
+  outletPressureLiquid = calcPressure((float)analogRead(P4)/maxAnalog*3.3);       // psi
+  Serial.print(inletPressureUpstream);
+  Serial.print(", ");
+  Serial.print(inletPressureUpstream);
+  Serial.print(", ");
+  Serial.print(outletPressureVapor);
+  Serial.print(", ");
+  Serial.print(outletPressureLiquid);
+  Serial.println("");
 
   // Calculate the inlet flow rate
   inletFlowRate = calcInletFlowRate();        // mL/min
 
   // Read and calculate heater module temps
-  heaterTemperature1 = calcTempHeaterModuleThermistor(analogRead(HMT1));     // degree celcius
-  heaterTemperature2 = calcTempHeaterModuleThermistor(analogRead(HMT2));     // degree celcius
-  heaterTemperature3 = calcTempHeaterModuleThermistor(analogRead(HMT3));     // degree celcius
-  heaterTemperature4 = calcTempHeaterModuleThermistor(analogRead(HMT4));     // degree celcius
-  heaterTemperature5 = calcTempHeaterModuleThermistor(analogRead(HMT5));     // degree celcius   
+  heaterTemperature1 = calcTempHeaterModuleThermistor(analogRead(HMT1)/maxAnalog);     // degree celcius
+  heaterTemperature2 = calcTempHeaterModuleThermistor(analogRead(HMT2)/maxAnalog);     // degree celcius
+  heaterTemperature3 = calcTempHeaterModuleThermistor(analogRead(HMT3)/maxAnalog);     // degree celcius
+  heaterTemperature4 = calcTempHeaterModuleThermistor(analogRead(HMT4)/maxAnalog);     // degree celcius
+  heaterTemperature5 = calcTempHeaterModuleThermistor(analogRead(HMT5)/maxAnalog);     // degree celcius   
 
   // Read and calculate boil surface temps
-  boilSurfaceTemperature1 = calcTempBoilSurfaceThermistor(analogRead(BST1));    // degree celcius
-  boilSurfaceTemperature2 = calcTempBoilSurfaceThermistor(analogRead(BST2));    // degree celcius
-  boilSurfaceTemperature3 = calcTempBoilSurfaceThermistor(analogRead(BST3));    // degree celcius
-  boilSurfaceTemperature4 = calcTempBoilSurfaceThermistor(analogRead(BST4));    // degree celcius
+  boilSurfaceTemperature1 = calcTempBoilSurfaceThermistor((float)analogRead(BST1)/maxAnalog*3.3);    // degree celcius
+  boilSurfaceTemperature2 = calcTempBoilSurfaceThermistor((float)analogRead(BST2)/maxAnalog*3.3);    // degree celcius
+  boilSurfaceTemperature3 = calcTempBoilSurfaceThermistor((float)analogRead(BST3)/maxAnalog*3.3);    // degree celcius
+  boilSurfaceTemperature4 = calcTempBoilSurfaceThermistor((float)analogRead(BST4)/maxAnalog*3.3);    // degree celcius
+  // Serial.print(boilSurfaceTemperature1);
+  // Serial.print(", ");
+  // Serial.print(boilSurfaceTemperature2);
+  // Serial.print(", ");
+  // Serial.print(boilSurfaceTemperature3);
+  // Serial.print(", ");
+  // Serial.print(boilSurfaceTemperature4);
+  // Serial.println("");
+
+
   averageBoilSurfaceTemp = (boilSurfaceTemperature1 + boilSurfaceTemperature2 + boilSurfaceTemperature3 + boilSurfaceTemperature4)/4; // degree celcius
 
   // Read and calcualte inlet fluid temp
@@ -231,6 +252,44 @@ void getData(){
 // Send data to the slave teensy (on interupt)
 void sendDataSlave(){
   SLAVE_SERIAL.println(encodeSlaveUART());
+}
+
+
+// End all data collection and sending and save data
+void endTest(){
+  // Stop the interval timers
+  //blinkTimer.end();
+  updateLCDTimer.end();
+  dataSlaveSend.end();
+
+  // Turn off piezo 1 and 2
+  enable1 = false;
+  enable2 = false;
+  sendDataSlave();
+
+  // Save data to the SD card
+
+
+  // Display to LCD screen
+  lcd.clear();
+
+  // Run until system is reset
+  uint16_t blinkCharacterDelay = 1000;
+  uint64_t blinkCharacterTimer = millis()+blinkCharacterDelay;
+  bool blink = true;
+  while (true){
+    lcd.setCursor(0, 0);
+    if (millis() - blinkCharacterTimer >= blinkCharacterDelay){
+      if (blink){lcd.print("*TEST HAS CONCLUDED*"); blink = !blink;}
+      else {lcd.print(" TEST HAS CONCLUDED "); blink = !blink;}
+      blinkCharacterTimer = millis();
+    }
+    
+    lcd.setCursor(0, 2);
+    lcd.print(" RESTART SYSTEM FOR");
+    lcd.setCursor(0, 3);
+    lcd.print("     NEXT  TEST");
+  }
 }
 
 void setup() {
@@ -283,24 +342,47 @@ void setup() {
   // Initialize test timer
   testTimeStart = millis();
 
+  // LCD update interupt
+  unsigned int updateDelay;
+  unsigned int minDelay = 250;
+  if (dataDelay > minDelay){updateDelay = dataDelay;}
+  else {updateDelay = minDelay;}
+  updateLCDTimer.begin(updateLCD, updateDelay*1000);
+  updateLCDTimer.priority(2);
+
   // Blink interupt
   blinkTimer.begin(blinkLED, blinkDelay*1000);      // Run the blinkLED function at delay speed (ns)
   blinkTimer.priority(1);                           // Priority 0 is highest, 255 is lowest
+  
+  // Send data to slave interupt
   dataSlaveSend.begin(sendDataSlave, 500000);
   dataSlaveSend.priority(0);
+
+  // Set analog resolution
+  analogReadResolution(analogResolution);
+
 }
 
-
+int stopCount = 0;
+int stopLimit = 25;
 void loop() {
   // Check if time to read and send/log data
   if (millis()-dataStartTime >= dataDelay){
-    //getData();                                  // Get sensor data
-    testTime = millis() - testTimeStart;        // Get current test time
-    dataStartTime = millis();                   // Restart timer for data
-    sendData();                                 // Send data
-    checkThermalRunaway();                      // Check that all heating elements are safe
-    //saveDataToSD()                              // Saves the data to a CSV file on the SD card
+    stopCount++;
+    getData();                                            // Get sensor data
+    //inletFluidTemperature = thermocouple.readCelsius();   // degree celcius
+    testTime = (millis() - testTimeStart)/100;           // Get current test time in seconds
+    testTimePrint = testTime * 0.1;
+    dataStartTime = millis();                             // Restart timer for data
+    //sendData();                                           // Send data
+    //checkThermalRunaway();                                // Check that all heating elements are safe
+    //saveDataToSD()                                        // Saves the data to a CSV file on the SD card
   }
+
+  // If stop test condition met, stop test
+  // if (stopCount >= stopLimit){
+  //   endTest();
+  // }
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
   // String incomingByte;
