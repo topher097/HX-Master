@@ -36,11 +36,17 @@ float calcPressure(float V){
 
 // Calculate the inlet flow rate using the two pressure measurements from inlet sensors
 float calcInletFlowRate(float V, float pressureUpstream, float pressureDownstream){
-  float valveOpenCv = 0.0818;                 // gal/min fully open on valve 2
-  float galpermin_to_mlpermin = 3785.41;      // 1 gal/min is 3785.41 mL/min
-  float sg = 1.54;                            // fluid specific gravity
-  inletFlowRate = valveOpenCv * sqrt(abs(inletPressureUpstream - inletPressureDownstream)/sg);    // gal/min
-  return inletFlowRate * galpermin_to_mlpermin;     // mL/min
+  // Calculate the Cv value given vector and the rotation of the pot
+  float percentOpen = V/(maxRotation - minRotation);        // percent the valve is open 0-1
+  uint16_t upperRotation = ceil((cv1.size()-1)*percentOpen);    // index of lower Cv value
+  uint16_t lowerRotation = floor((cv1.size()-1)*percentOpen);   // index of upper Cv value
+  float upperValveCv = cv2[upperRotation];                  // lower value of Cv
+  float lowerValveCv = cv2[lowerRotation];                  // upper value of Cv
+  float valveCv = lowerValveCv + V * (upperValveCv - lowerValveCv)/(upperRotation - lowerRotation);   // linear interpolation of Cv value
+  float galpermin_to_mlpermin = 3785.41;                    // 1 gal/min is 3785.41 mL/min
+  float sg = 1.54;                                          // fluid specific gravity
+  inletFlowRate = valveCv * sqrt(abs(inletPressureUpstream - inletPressureDownstream)/sg);            // gal/min
+  return inletFlowRate * galpermin_to_mlpermin;             // mL/min
 }
 
 

@@ -192,13 +192,13 @@ void checkThermalRunaway(){
 // Update the LCD screen
 void updateLCD(){
   lcd.setCursor(0, 0);
-  lcd.print("Flow rate: " + (String)round(inletFlowRate) + "mL/min");
+  lcd.print("Flow: " + (String)(inletFlowRate) + " mL/min");
   lcd.setCursor(0, 1);
-  lcd.print("Fluid temp: " + (String)inletFluidTemperature + "C");
+  lcd.print("Fluid temp: " + (String)inletFluidTemperature + " C");
   lcd.setCursor(0, 2);
-  lcd.print("Avg. BS temp: " + (String)round(averageBoilSurfaceTemp) + "C");
+  lcd.print("Avg. BS temp: " + (String)round(averageBoilSurfaceTemp) + " C");
   lcd.setCursor(0, 3);
-  lcd.print("E flux: " + (String)round(heatEnergyDensity) + "W/cm^2");
+  lcd.print("E flux: " + (String)round(heatEnergyDensity) + " W/cm^2");
   //Serial.println("LCD UPDATE");
 }
 
@@ -213,7 +213,9 @@ void getData(){
   // Take weighted average of pressure readings
   float weight = 0.9;
   inletPressureUpstream = inletPressureUpstream*weight + instantInletPressureUpstream*(1-weight);
+  inletPressureUpstream = 10.0;
   inletPressureDownstream = inletPressureDownstream*weight + instantInletPressureDownstream*(1-weight);
+  inletPressureDownstream = 8.0;
   outletPressureVapor = outletPressureVapor*weight + instantOutletPressureVapor*(1-weight);
   outletPressureLiquid = outletPressureLiquid*weight + instantOutletPressureLiquid*(1-weight);
   
@@ -227,11 +229,21 @@ void getData(){
   // Serial.println("");
 
   // Calculate the inlet flow rate
+  weight = 0.95;
+  // Note, if need to flip direction, do maxAnalog-analogRead(POT)
   int16_t potRead = analogRead(POT);                                        // Get reading from valve potentiometer
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
   float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
-  Serial.println(inletFlowRate);
+  Serial.print(testTimePrint);
+  Serial.print(", ");
+  Serial.print(inletFlowRate);
+  Serial.print(", ");
+  Serial.print(inletPressureUpstream-inletPressureDownstream);
+  Serial.print(", ");
+  Serial.print(inletPressureUpstream);
+  Serial.print(", ");
+  Serial.println(inletPressureDownstream);
 
   // Read and calculate heater module temps
   heaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
@@ -248,6 +260,7 @@ void getData(){
   float instantBoilSurfaceTemperature4 = calcTempBoilSurfaceThermistor((float)analogRead(BST4)/maxAnalog*3.3);    // degree celcius
 
   // Take weighted average of boil surface temps
+  weight = 0.9;
   boilSurfaceTemperature1 = boilSurfaceTemperature1*weight + instantBoilSurfaceTemperature1*(1-weight);
   boilSurfaceTemperature2 = boilSurfaceTemperature2*weight + instantBoilSurfaceTemperature2*(1-weight);
   boilSurfaceTemperature3 = boilSurfaceTemperature3*weight + instantBoilSurfaceTemperature3*(1-weight);
@@ -389,14 +402,14 @@ void loop() {
   // Check if time to read and send/log data
   if (millis()-dataStartTime >= dataDelay){
     stopCount++;
-    getData();                                            // Get sensor data
-    //inletFluidTemperature = thermocouple.readCelsius();   // degree celcius
-    testTime = (millis() - testTimeStart)/100;           // Get current test time in seconds
-    testTimePrint = testTime * 0.1;
-    dataStartTime = millis();                             // Restart timer for data
-    //sendData();                                           // Send data
-    //checkThermalRunaway();                                // Check that all heating elements are safe
-    //saveDataToSD()                                        // Saves the data to a CSV file on the SD card
+    getData();                                              // Get sensor data
+    //inletFluidTemperature = thermocouple.readCelsius();     // degree celcius
+    testTime = (millis() - testTimeStart);                  // Get current test time in milliseconds
+    testTimePrint = testTime * 0.0010;                       // Current test time in seconds 
+    dataStartTime = millis();                               // Restart timer for data
+    //sendData();                                             // Send data to MATLAB
+    //checkThermalRunaway();                                  // Check that all heating elements are safe
+    //saveDataToSD()                                          // Saves the data to a CSV file on the SD card
   }
 
   // If stop test condition met, stop test

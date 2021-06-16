@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include <string>
 #include <defaultPiezo.h>
+#include <vector>
 
 using namespace defaultPiezoProperties;
+using namespace std;
 
 namespace varDefinitions
 {
@@ -39,10 +41,14 @@ namespace varDefinitions
 
     // Valve potentiometer vars
     int16_t valveRotation;
+    int16_t minRotation = 0;                // Value when valve is fully closed
+    int16_t maxRotation = 4095;             // Value when valve is fully open
+    vector<float> cv1 = {0.0, 0.0001, 0.0007, 0.0017, 0.0027, 0.0037, 0.0047, 0.0057, 0.0067, 0.0077, 0.0087, 0.0097, 0.0107, 0.0117, 0.0127, 0.0138, 0.0148, 0.0159, 0.0169, 0.0180, 0.0190};       // Cv for valve 1
+    vector<float> cv2 = {0.0, 0.0053, 0.0120, 0.0184, 0.0245, 0.0303, 0.0358, 0.0410, 0.0458, 0.0504, 0.0546, 0.0585, 0.0623, 0.0656, 0.0688, 0.0715, 0.0742, 0.0764, 0.0786, 0.0802, 0.0818};       // Cv for valve 2
 
 
     // Logging vars
-    uint16_t dataDelay = 25;                // time between data read and transfer in milliseconds
+    uint16_t dataDelay = 50;                // time between data read and transfer in milliseconds
     uint64_t dataStartTime;                 // start time after data read and sent
     uint64_t testTime;                 // time since program started in milliseconds
     uint64_t testTimeStart;            // time of when program starts
