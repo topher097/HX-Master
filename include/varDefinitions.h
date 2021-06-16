@@ -42,10 +42,10 @@ namespace varDefinitions
 
 
     // Logging vars
-    unsigned int dataDelay = 200;                // time between data read and transfer in milliseconds
-    unsigned int dataStartTime;                 // start time after data read and sent
-    unsigned long int testTime;                 // time since program started in milliseconds
-    unsigned long int testTimeStart;            // time of when program starts
+    uint16_t dataDelay = 25;                // time between data read and transfer in milliseconds
+    uint64_t dataStartTime;                 // start time after data read and sent
+    uint64_t testTime;                 // time since program started in milliseconds
+    uint64_t testTimeStart;            // time of when program starts
     double testTimePrint;
 
     // Heater module cartridge controller vars

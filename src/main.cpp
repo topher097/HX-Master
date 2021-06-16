@@ -205,10 +205,18 @@ void updateLCD(){
 // Get all sensor data and calculate the appropriate variables
 void getData(){
   // Read and calculate pressure sensor values
-  inletPressureUpstream = calcPressure((float)analogRead(P1)/maxAnalog*3.3);      // psi
-  inletPressureDownstream = calcPressure((float)analogRead(P2)/maxAnalog*3.3);    // psi
-  outletPressureVapor = calcPressure((float)analogRead(P3)/maxAnalog*3.3);        // psi
-  outletPressureLiquid = calcPressure((float)analogRead(P4)/maxAnalog*3.3);       // psi
+  float instantInletPressureUpstream = calcPressure((float)analogRead(P1)/maxAnalog*3.3);      // psi
+  float instantInletPressureDownstream = calcPressure((float)analogRead(P2)/maxAnalog*3.3);    // psi
+  float instantOutletPressureVapor = calcPressure((float)analogRead(P3)/maxAnalog*3.3);        // psi
+  float instantOutletPressureLiquid = calcPressure((float)analogRead(P4)/maxAnalog*3.3);       // psi
+
+  // Take weighted average of pressure readings
+  float weight = 0.9;
+  inletPressureUpstream = inletPressureUpstream*weight + instantInletPressureUpstream*(1-weight);
+  inletPressureDownstream = inletPressureDownstream*weight + instantInletPressureDownstream*(1-weight);
+  outletPressureVapor = outletPressureVapor*weight + instantOutletPressureVapor*(1-weight);
+  outletPressureLiquid = outletPressureLiquid*weight + instantOutletPressureLiquid*(1-weight);
+  
   // Serial.print(inletPressureUpstream);
   // Serial.print(", ");
   // Serial.print(inletPressureDownstream);
@@ -219,20 +227,32 @@ void getData(){
   // Serial.println("");
 
   // Calculate the inlet flow rate
-  inletFlowRate = calcInletFlowRate();        // mL/min
+  int16_t potRead = analogRead(POT);                                        // Get reading from valve potentiometer
+  valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
+  float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
+  inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
+  Serial.println(inletFlowRate);
 
   // Read and calculate heater module temps
-  heaterTemperature1 = calcTempHeaterModuleThermistor(analogRead(HMT1)/maxAnalog);     // degree celcius
-  heaterTemperature2 = calcTempHeaterModuleThermistor(analogRead(HMT2)/maxAnalog);     // degree celcius
-  heaterTemperature3 = calcTempHeaterModuleThermistor(analogRead(HMT3)/maxAnalog);     // degree celcius
-  heaterTemperature4 = calcTempHeaterModuleThermistor(analogRead(HMT4)/maxAnalog);     // degree celcius
-  heaterTemperature5 = calcTempHeaterModuleThermistor(analogRead(HMT5)/maxAnalog);     // degree celcius   
+  heaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
+  
+  //heaterTemperature2 = calcTempHeaterModuleThermistor((float)analogRead(HMT2)/maxAnalog*3.3);     // degree celcius
+  //heaterTemperature3 = calcTempHeaterModuleThermistor((float)analogRead(HMT3)/maxAnalog*3.3);     // degree celcius
+  //heaterTemperature4 = calcTempHeaterModuleThermistor((float)analogRead(HMT4)/maxAnalog*3.3);     // degree celcius
+  //heaterTemperature5 = calcTempHeaterModuleThermistor((float)analogRead(HMT5)/maxAnalog*3.3);     // degree celcius   
 
   // Read and calculate boil surface temps
-  boilSurfaceTemperature1 = calcTempBoilSurfaceThermistor((float)analogRead(BST1)/maxAnalog*3.3);    // degree celcius
-  boilSurfaceTemperature2 = calcTempBoilSurfaceThermistor((float)analogRead(BST2)/maxAnalog*3.3);    // degree celcius
-  boilSurfaceTemperature3 = calcTempBoilSurfaceThermistor((float)analogRead(BST3)/maxAnalog*3.3);    // degree celcius
-  boilSurfaceTemperature4 = calcTempBoilSurfaceThermistor((float)analogRead(BST4)/maxAnalog*3.3);    // degree celcius
+  float instantBoilSurfaceTemperature1 = calcTempBoilSurfaceThermistor((float)analogRead(BST1)/maxAnalog*3.3);    // degree celcius
+  float instantBoilSurfaceTemperature2 = calcTempBoilSurfaceThermistor((float)analogRead(BST2)/maxAnalog*3.3);    // degree celcius
+  float instantBoilSurfaceTemperature3 = calcTempBoilSurfaceThermistor((float)analogRead(BST3)/maxAnalog*3.3);    // degree celcius
+  float instantBoilSurfaceTemperature4 = calcTempBoilSurfaceThermistor((float)analogRead(BST4)/maxAnalog*3.3);    // degree celcius
+
+  // Take weighted average of boil surface temps
+  boilSurfaceTemperature1 = boilSurfaceTemperature1*weight + instantBoilSurfaceTemperature1*(1-weight);
+  boilSurfaceTemperature2 = boilSurfaceTemperature2*weight + instantBoilSurfaceTemperature2*(1-weight);
+  boilSurfaceTemperature3 = boilSurfaceTemperature3*weight + instantBoilSurfaceTemperature3*(1-weight);
+  boilSurfaceTemperature4 = boilSurfaceTemperature4*weight + instantBoilSurfaceTemperature4*(1-weight);
+  
   // Serial.print(boilSurfaceTemperature1);
   // Serial.print(", ");
   // Serial.print(boilSurfaceTemperature2);
@@ -242,11 +262,11 @@ void getData(){
   // Serial.print(boilSurfaceTemperature4);
   // Serial.println("");
 
-
+  // Calculate the average boil surface temperature
   averageBoilSurfaceTemp = (boilSurfaceTemperature1 + boilSurfaceTemperature2 + boilSurfaceTemperature3 + boilSurfaceTemperature4)/4; // degree celcius
 
   // Read and calcualte inlet fluid temp
-  inletFluidTemperature = thermocouple.readCelsius();            // degree celcius
+  inletFluidTemperature = thermocouple.readCelsius();            // degree celcius, instant reading
 }
 
 // Send data to the slave teensy (on interupt)
@@ -343,8 +363,8 @@ void setup() {
   testTimeStart = millis();
 
   // LCD update interupt
-  unsigned int updateDelay;
-  unsigned int minDelay = 250;
+  uint16_t updateDelay;
+  uint16_t minDelay = 250;
   if (dataDelay > minDelay){updateDelay = dataDelay;}
   else {updateDelay = minDelay;}
   updateLCDTimer.begin(updateLCD, updateDelay*1000);
