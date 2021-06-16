@@ -28,8 +28,8 @@ namespace coeffDefinitions
     const float HMcoef11 = -4.352448435319378e-22;
 
     // Pressure sensor interpolation curve coefficients
-    const float Pcoef0 = -7.125683319833918e-06;
-    const float Pcoef1 = 129480.71625391858;
+    const float Pcoef0 = 0;
+    const float Pcoef1 = 9.3;
 }
 
 #endif

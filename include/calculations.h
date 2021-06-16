@@ -16,7 +16,7 @@ using namespace std;
 float calcTempHeaterModuleThermistor(float V){
   // Note that the analog value is anwhere from 0 to 4095, so that value is converted to 0 to 3.3V in interpolation function automatically
   float tempTemperature = HMcoef0*pow(V, 0) + HMcoef1*pow(V, 1) + HMcoef2*pow(V, 2) + HMcoef3*pow(V, 3) + HMcoef4*pow(V, 4) + HMcoef5*pow(V, 5) + HMcoef6*pow(V, 6) + HMcoef7*pow(V, 7) + HMcoef8*pow(V, 8) + HMcoef9*pow(V, 9) + HMcoef10*pow(V, 10) + HMcoef11*pow(V, 11);
-  return tempTemperature;
+  return tempTemperature + heaterModuleTempOffset;
 }
 
 // Calculate the temperature of the boil surface thermistor using interpolation function and voltage read from pin
@@ -31,7 +31,7 @@ float calcTempBoilSurfaceThermistor(float V){
 float calcPressure(float V){
   // Get the analog value and convert to psi
   float tempPressure = Pcoef0*pow(V, 0) + Pcoef1*pow(V, 1);
-  return tempPressure;
+  return tempPressure + pressureOffset;
 }
 
 // Calculate the inlet flow rate using the two pressure measurements from inlet sensors

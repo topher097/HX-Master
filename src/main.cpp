@@ -202,21 +202,21 @@ void updateLCD(){
   //Serial.println("LCD UPDATE");
 }
 
-// Get all sensor data anc calculate the appropriate variables
+// Get all sensor data and calculate the appropriate variables
 void getData(){
   // Read and calculate pressure sensor values
   inletPressureUpstream = calcPressure((float)analogRead(P1)/maxAnalog*3.3);      // psi
   inletPressureDownstream = calcPressure((float)analogRead(P2)/maxAnalog*3.3);    // psi
   outletPressureVapor = calcPressure((float)analogRead(P3)/maxAnalog*3.3);        // psi
   outletPressureLiquid = calcPressure((float)analogRead(P4)/maxAnalog*3.3);       // psi
-  Serial.print(inletPressureUpstream);
-  Serial.print(", ");
-  Serial.print(inletPressureUpstream);
-  Serial.print(", ");
-  Serial.print(outletPressureVapor);
-  Serial.print(", ");
-  Serial.print(outletPressureLiquid);
-  Serial.println("");
+  // Serial.print(inletPressureUpstream);
+  // Serial.print(", ");
+  // Serial.print(inletPressureDownstream);
+  // Serial.print(", ");
+  // Serial.print(outletPressureVapor);
+  // Serial.print(", ");
+  // Serial.print(outletPressureLiquid);
+  // Serial.println("");
 
   // Calculate the inlet flow rate
   inletFlowRate = calcInletFlowRate();        // mL/min

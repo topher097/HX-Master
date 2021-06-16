@@ -16,6 +16,7 @@ namespace varDefinitions
     float outletPressureVapor = 1.0;
     float outletPressureLiquid = 1.0;
     float pressureDriveVoltage = 10.0;          // Voltage driving the pressure sensors
+    float pressureOffset = 0.7;                 // PSI
     float inletFlowRate;
 
     // Thermistor temperature vars
@@ -38,7 +39,7 @@ namespace varDefinitions
 
     // Valve potentiometer vars
     int16_t valveRotation;
-    
+
 
     // Logging vars
     unsigned int dataDelay = 200;                // time between data read and transfer in milliseconds
