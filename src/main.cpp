@@ -192,14 +192,15 @@ void checkThermalRunaway(){
 // Update the LCD screen
 void updateLCD(){
   lcd.setCursor(0, 0);
-  lcd.print("Flow: " + (String)(inletFlowRate) + " mL/min");
+  lcd.print((String)(inletFlowRate));
+  lcd.setCursor(6, 0);
+  lcd.print("mL/min, " + (String)(round((valveRotation/((float)maxRotation - (float)minRotation))*100)) + "%   ");
   lcd.setCursor(0, 1);
   lcd.print("Fluid temp: " + (String)inletFluidTemperature + " C");
   lcd.setCursor(0, 2);
   lcd.print("Avg. BS temp: " + (String)round(averageBoilSurfaceTemp) + " C");
   lcd.setCursor(0, 3);
   lcd.print("E flux: " + (String)round(heatEnergyDensity) + " W/cm^2");
-  //Serial.println("LCD UPDATE");
 }
 
 // Get all sensor data and calculate the appropriate variables
@@ -213,9 +214,9 @@ void getData(){
   // Take weighted average of pressure readings
   float weight = 0.9;
   inletPressureUpstream = inletPressureUpstream*weight + instantInletPressureUpstream*(1-weight);
-  inletPressureUpstream = 10.0;
+  inletPressureUpstream = 45 + rand()/RAND_MAX;     // for testing
   inletPressureDownstream = inletPressureDownstream*weight + instantInletPressureDownstream*(1-weight);
-  inletPressureDownstream = 8.0;
+  inletPressureDownstream = 14.5 + rand()/RAND_MAX;    // for testing
   outletPressureVapor = outletPressureVapor*weight + instantOutletPressureVapor*(1-weight);
   outletPressureLiquid = outletPressureLiquid*weight + instantOutletPressureLiquid*(1-weight);
   
@@ -229,21 +230,18 @@ void getData(){
   // Serial.println("");
 
   // Calculate the inlet flow rate
-  weight = 0.95;
+  weight = 0.9;
   // Note, if need to flip direction, do maxAnalog-analogRead(POT)
   int16_t potRead = analogRead(POT);                                        // Get reading from valve potentiometer
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
   float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
-  Serial.print(testTimePrint);
-  Serial.print(", ");
-  Serial.print(inletFlowRate);
-  Serial.print(", ");
-  Serial.print(inletPressureUpstream-inletPressureDownstream);
-  Serial.print(", ");
-  Serial.print(inletPressureUpstream);
-  Serial.print(", ");
-  Serial.println(inletPressureDownstream);
+  // Serial.print(testTimePrint);
+  // Serial.print(", ");
+  // Serial.print(inletFlowRate);
+  // Serial.print(", ");
+  // Serial.println(inletPressureUpstream-inletPressureDownstream);
+
 
   // Read and calculate heater module temps
   heaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
