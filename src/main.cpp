@@ -91,39 +91,32 @@ void resetPiezoProperties() {
 
 // Send current data to serial port for MATLAB
 void sendData(){
-    Serial.print(testTimePrint);
-    Serial.print(',');
-    Serial.print(inletPressureUpstream);
-    Serial.print(',');
-    Serial.print(inletPressureDownstream);
-    Serial.print(',');
-    Serial.print(outletPressureVapor);
-    Serial.print(',');
-    Serial.print(outletPressureLiquid);
-    Serial.print(',');
-    Serial.print(heaterTemperature1);
-    Serial.print(',');
-    Serial.print(heaterTemperature2);
-    Serial.print(',');
-    Serial.print(heaterTemperature3);
-    Serial.print(',');
-    Serial.print(heaterTemperature4);
-    Serial.print(',');
-    Serial.print(heaterTemperature5);
-    Serial.print(',');
-    Serial.print(boilSurfaceTemperature1);
-    Serial.print(',');
-    Serial.print(boilSurfaceTemperature2);
-    Serial.print(',');
-    Serial.print(boilSurfaceTemperature3);
-    Serial.print(',');
-    Serial.print(boilSurfaceTemperature4);
-    Serial.print(',');
-    Serial.print(averageBoilSurfaceTemp);
-    Serial.print(',');
-    Serial.print(inletFlowRate); 
-    Serial.print(',');
-    Serial.print(inletFluidTemperature);
+    Serial.print(testTimePrint);                Serial.print(',');
+    Serial.print(inletPressureUpstream);        Serial.print(',');
+    Serial.print(inletPressureDownstream);      Serial.print(',');
+    Serial.print(outletPressureVapor);          Serial.print(',');
+    Serial.print(outletPressureLiquid);         Serial.print(',');
+    Serial.print(heaterTemperature1);           Serial.print(',');
+    Serial.print(heaterTemperature2);           Serial.print(',');
+    Serial.print(heaterTemperature3);           Serial.print(',');
+    Serial.print(heaterTemperature4);           Serial.print(',');
+    Serial.print(heaterTemperature5);           Serial.print(',');
+    Serial.print(boilSurfaceTemperature1);      Serial.print(',');
+    Serial.print(boilSurfaceTemperature2);      Serial.print(',');
+    Serial.print(boilSurfaceTemperature3);      Serial.print(',');
+    Serial.print(boilSurfaceTemperature4);      Serial.print(',');
+    Serial.print(averageBoilSurfaceTemp);       Serial.print(',');
+    Serial.print(inletFlowRate);                Serial.print(',');
+    Serial.print(inletFluidTemperature);        Serial.print(',');
+    Serial.print(slaveData.frequency1);         Serial.print(',');
+    Serial.print(slaveData.frequency2);         Serial.print(',');
+    Serial.print(slaveData.amplitude1);         Serial.print(',');
+    Serial.print(slaveData.amplitude2);         Serial.print(',');
+    Serial.print(slaveData.phase1);             Serial.print(',');
+    Serial.print(slaveData.phase2);             Serial.print(',');
+    Serial.print(slaveData.enable1);            Serial.print(',');
+    Serial.print(slaveData.enable2);            Serial.print(',');
+    Serial.print(endTesting);                   
     Serial.write(13);   // Carriage return "CR"
     Serial.write(10);   // Linefeed "LF"
 }
