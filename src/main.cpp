@@ -12,6 +12,7 @@
 #include <SD.h>                   // For logging to SD card
 #include <SPI.h>                  // For SPI card access
 #include <i2c_t3.h>               // For multiple I2C channels
+#include <EasyTransfer.h>         // For slave-master communication
 
 // Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
@@ -21,8 +22,7 @@
 #include <pinDefinitions.h>         // Header file with all master teensy pin definitions
 #include <varDefinitions.h>         // Header file with all other variables used
 #include <calculations.h>           // Header file with calculations of temps and pressures
-#include <slaveUART.h>              // Header file for encoding and decoding UART to/from slave
-#include <defaultPiezo.h>           // Header file with default piezo driving properties
+#include <defaultPiezo.h>           // Header file with the default piezo properties
 
 // Namespaces
 using namespace varDefinitions;
@@ -30,6 +30,9 @@ using namespace pinDefinitions;
 using namespace coeffDefinitions;
 using namespace defaultPiezoProperties;
 using namespace std;
+
+// EasyTransfer objects
+EasyTransfer ETout;
 
 // I2C devices
 LiquidCrystal_I2C lcd(0x27,20,4);         // Address for LCD
@@ -40,7 +43,6 @@ Adafruit_MAX31855 thermocouple(IFT_CS);                         // Hardware SPI 
 
 // Timer objects
 IntervalTimer blinkTimer;
-IntervalTimer dataSlaveSend;
 IntervalTimer updateLCDTimer;
 
 // Special characters for LCD
@@ -49,6 +51,19 @@ uint8_t backSlashLCD [8]= { 0x00, 0x10, 0x08, 0x04, 0x02, 0x01, 0x00, 0x00 };
 // Analog resolution
 int16_t analogResolution = 12;                          // 12 bit resolution
 int16_t maxAnalog = pow(2, analogResolution)-1;          // Max analog resolution 2^(analogResolution)-1
+
+// Struct for communicating with slave
+struct SLAVE_DATA_STRUCTURE{
+  float frequency1;       // Frequency of left channel piezo in Hz
+  float frequency2;       // Frequency of right channel piezo in Hz
+  float amplitude1;       // Amplitude of sine wave 1 (left cahnnel); 0-1
+  float amplitude2;       // Amplitude of sine wave 2 (right channel); 0-1
+  float phase1;           // Phase of left channel signal in degrees
+  float phase2;           // Phase of right channel signal in degrees
+  int enable1;            // Enable pin for piezo driver 1
+  int enable2;            // Enable pin for piezo driver 2
+};
+SLAVE_DATA_STRUCTURE slaveData;
 
 // Blink the status LED
 void blinkLED() {
@@ -64,14 +79,14 @@ void blinkLED() {
 
 // Reset the piezo properties to the default values
 void resetPiezoProperties() {
-    frequency1 = default_frequency1;    // Frequency of left channel piezo in Hz
-    frequency2 = default_frequency2;    // Frequency of right channel piezo in Hz
-    amplitude1 = default_amplitude1;    // Amplitude of sine wave 1 (left cahnnel); 0-1
-    amplitude2 = default_amplitude2;    // Amplitude of sine wave 2 (right channel); 0-1
-    phase1 = default_phase1;            // Phase of left channel signal in degrees
-    phase2 = default_phase2;            // Phase of right channel signal in degrees
-    enable1 = default_enable1;            // Enable pin for piezo driver 1
-    enable2 = default_enable2;            // Enable pin for piezo driver 2
+  slaveData.frequency1 = default_frequency1;    // Frequency of left channel piezo in Hz
+  slaveData.frequency2 = default_frequency2;    // Frequency of right channel piezo in Hz
+  slaveData.amplitude1 = default_amplitude1;    // Amplitude of sine wave 1 (left cahnnel); 0-1
+  slaveData.amplitude2 = default_amplitude2;    // Amplitude of sine wave 2 (right channel); 0-1
+  slaveData.phase1 = default_phase1;            // Phase of left channel signal in degrees
+  slaveData.phase2 = default_phase2;            // Phase of right channel signal in degrees
+  slaveData.enable1 = default_enable1;            // Enable pin for piezo driver 1
+  slaveData.enable2 = default_enable2;            // Enable pin for piezo driver 2
 }
 
 // Send current data to serial port for MATLAB
@@ -275,22 +290,16 @@ void getData(){
   inletFluidTemperature = thermocouple.readCelsius();            // degree celcius, instant reading
 }
 
-// Send data to the slave teensy (on interupt)
-void sendDataSlave(){
-  SLAVE_SERIAL.println(encodeSlaveUART());
-}
-
 // End all data collection and sending and save data
 void endTest(){
   // Stop the interval timers
   //blinkTimer.end();
   updateLCDTimer.end();
-  dataSlaveSend.end();
 
   // Turn off piezo 1 and 2
-  enable1 = false;
-  enable2 = false;
-  sendDataSlave();
+  slaveData.enable1 = false;
+  slaveData.enable2 = false;
+  ETout.sendData();
 
   // Save data to the SD card
 
@@ -317,9 +326,43 @@ void endTest(){
   }
 }
 
+// Decode the serial from MATLAB and update variable values
+void decodeMATLABSerial(string inputString){
+  vector<float> v;
+  stringstream ss(inputString);
+  
+  // Split comma separated string into different elements and add to vector 
+  while (ss.good()){
+    string substr;
+    float temp;
+    getline(ss, substr, ',');
+    istringstream ss2(substr);
+    ss2 >> temp;
+    v.push_back(temp);
+  }
+  
+  // Take elements of vector and save to appropriate variables
+  int i = 1;
+  slaveData.frequency1 = v[i]; i++;
+  slaveData.frequency2 = v[i]; i++;
+  slaveData.amplitude1 = v[i]; i++;
+  slaveData.amplitude2 = v[i]; i++;
+  slaveData.phase1     = v[i]; i++;
+  slaveData.phase2     = v[i]; i++;
+  slaveData.enable1    = (int)v[i]; i++;
+  slaveData.enable2    = (int)v[i]; i++;
+  endTesting = (int)v[i];
+}
+
+
 void setup() {
-  // Setup default piezo properties
+  ETout.begin(details(slaveData), &SLAVE_SERIAL);        // Serial comminucation with the slave teensy
+
+  // Setup piezo properties
   resetPiezoProperties();
+
+  // Send the piezo properties to the slave teensy
+  ETout.sendData();
 
   // Initialize pinmodes
   pinMode(BLINK, OUTPUT);   // Status LED
@@ -375,10 +418,6 @@ void setup() {
   blinkTimer.begin(blinkLED, blinkDelay*1000);      // Run the blinkLED function at delay speed (ns)
   blinkTimer.priority(1);                           // Priority 0 is highest, 255 is lowest
   
-  // Send data to slave interupt
-  dataSlaveSend.begin(sendDataSlave, 500000);       // Send data to the slave teensy every 500 ms
-  dataSlaveSend.priority(0);
-
   analogReadResolution(analogResolution);           // Set analog resolution
 }
 
@@ -392,6 +431,8 @@ void loop() {
     //sendData();                                             // Send data to MATLAB
     //checkThermalRunaway();                                  // Check that all heating elements are safe
     //saveDataToSD()                                          // Saves the data to a CSV file on the SD card
+    //ETout.sendData();
+    //Serial.println("Sent to slave");
   }
 
   // If stop test condition met, stop test
@@ -400,25 +441,16 @@ void loop() {
   }
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
-  // String incomingByte;
-  // if (Serial.available() > 0) {
-  //   incomingByte = Serial.readString();
-  //   Serial.print("USB received: ");
-  //   Serial.println(incomingByte);
-  //   // decodeMATLABSerial();
-  //   String sendSlave = encodeSlaveUART();     // Send update piezo bytes to slave
-  //   SLAVE_SERIAL.println(sendSlave);
-  // }
-  // // Check if new serial from slave teensy
-  // if (SLAVE_SERIAL.available() > 0) {
-  //   Serial.println("HI");
-  //   incomingByte = SLAVE_SERIAL.readString();
-  //   Serial.print("UART received: ");
-  //   Serial.println(incomingByte);
-  //   decodeSlaveUART(incomingByte.c_str());
-  //   SLAVE_SERIAL.print("UART received:");
-  //   SLAVE_SERIAL.println(incomingByte);
-  // }
+  String incomingString;
+  if (Serial.available() > 0) {
+    incomingString = Serial.readString();
+    Serial.print("USB received: "); Serial.println(incomingString);
+    decodeMATLABSerial(incomingString.c_str());   // Unpacks incoming string and updates variables
+    for (byte i=0; i < 3; i++){
+      ETout.sendData();                           // Send updated data to the slave teensy n times to make sure slave got it
+      delay(20);
+    }
+  }
   
 
   // Control heater modules
