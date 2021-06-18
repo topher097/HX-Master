@@ -53,9 +53,10 @@ namespace varDefinitions
     // Logging vars
     uint16_t dataDelay = 50;                // time between data read and transfer in milliseconds
     uint64_t dataStartTime;                 // start time after data read and sent
-    uint64_t testTime;                 // time since program started in milliseconds
-    uint64_t testTimeStart;            // time of when program starts
-    double testTimePrint;
+    uint64_t testTime;                      // time since program started in milliseconds
+    uint64_t testTimeStart;                 // time of when program starts
+    double testTimePrint;                   // Print the time to serial for MATLAB
+    bool endTesting = false;                // Bool to end the test
 
     // Heater module cartridge controller vars
     int heatEnergyDensity = 50;         // Desired effective wattage per cm^2 to be pumped through heater modules

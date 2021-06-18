@@ -12,14 +12,10 @@
 #include <SD.h>                   // For logging to SD card
 #include <SPI.h>                  // For SPI card access
 #include <i2c_t3.h>               // For multiple I2C channels
+#pragma once
 
-// Hardware serial (UART)
+// Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
-
-// Hardware I2C
-
-
-
 
 // Header files
 #include <coeffDefinitions.h>       // Header file with interpolation function coefficients
@@ -35,7 +31,6 @@ using namespace pinDefinitions;
 using namespace coeffDefinitions;
 using namespace defaultPiezoProperties;
 using namespace std;
-
 
 // I2C devices
 LiquidCrystal_I2C lcd(0x27,20,4);         // Address for LCD
@@ -80,7 +75,7 @@ void resetPiezoProperties() {
     enable2 = default_enable2;            // Enable pin for piezo driver 2
 }
 
-// Send current data to serial port
+// Send current data to serial port for MATLAB
 void sendData(){
     Serial.print(testTimePrint);
     Serial.print(',');
@@ -212,7 +207,7 @@ void getData(){
   float instantOutletPressureLiquid = calcPressure((float)analogRead(P4)/maxAnalog*3.3);       // psi
 
   // Take weighted average of pressure readings
-  float weight = 0.9;
+  float weight = 0.1;
   inletPressureUpstream = inletPressureUpstream*weight + instantInletPressureUpstream*(1-weight);
   inletPressureUpstream = 45 + rand()/RAND_MAX;     // for testing
   inletPressureDownstream = inletPressureDownstream*weight + instantInletPressureDownstream*(1-weight);
@@ -230,12 +225,13 @@ void getData(){
   // Serial.println("");
 
   // Calculate the inlet flow rate
-  weight = 0.9;
+  weight = 0.1;
   // Note, if need to flip direction, do maxAnalog-analogRead(POT)
   int16_t potRead = analogRead(POT);                                        // Get reading from valve potentiometer
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
   float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
+  
   // Serial.print(testTimePrint);
   // Serial.print(", ");
   // Serial.print(inletFlowRate);
@@ -258,7 +254,7 @@ void getData(){
   float instantBoilSurfaceTemperature4 = calcTempBoilSurfaceThermistor((float)analogRead(BST4)/maxAnalog*3.3);    // degree celcius
 
   // Take weighted average of boil surface temps
-  weight = 0.9;
+  weight = 0.1;
   boilSurfaceTemperature1 = boilSurfaceTemperature1*weight + instantBoilSurfaceTemperature1*(1-weight);
   boilSurfaceTemperature2 = boilSurfaceTemperature2*weight + instantBoilSurfaceTemperature2*(1-weight);
   boilSurfaceTemperature3 = boilSurfaceTemperature3*weight + instantBoilSurfaceTemperature3*(1-weight);
@@ -284,7 +280,6 @@ void getData(){
 void sendDataSlave(){
   SLAVE_SERIAL.println(encodeSlaveUART());
 }
-
 
 // End all data collection and sending and save data
 void endTest(){
@@ -342,6 +337,7 @@ void setup() {
   pinMode(BST2, INPUT);     // Thermistor from boil surface num 2
   pinMode(BST3, INPUT);     // Thermistor from boil surface num 3
   pinMode(BST4, INPUT);     // Thermistor from boil surface num 4
+  pinMode(POT, INPUT);      // Valve rotation potentiometer
   pinMode(HMD1, OUTPUT);    // Heater module 1
   pinMode(HMD2, OUTPUT);    // Heater module 2
   pinMode(HMD3, OUTPUT);    // Heater module 3
@@ -350,11 +346,8 @@ void setup() {
   pinMode(RHD, OUTPUT);     // Rope heater
   pinMode(IFT_CS, OUTPUT);  // CS pin for inlet fluid thermocouple
 
-  // Begin SPI bus
-  SPI.begin();
-
-  // Begin I2C bus
-  Wire.begin();
+  SPI.begin();              // Begin SPI bus
+  Wire.begin();             // Begin I2C bus
 
   // Setup LCD
   lcd.init();
@@ -364,13 +357,11 @@ void setup() {
   updateLCD();
 
   // Serial initialization
-  Serial.begin(115200);     // To MATLAB
-  SLAVE_SERIAL.begin(115200);      // To Teensy4.0 Slave
+  Serial.begin(115200);             // To MATLAB
+  SLAVE_SERIAL.begin(115200);       // To Teensy4.0 Slave
 
-  // Initialize data timer
-  dataStartTime = millis(); // change to interupt
-
-  // Initialize test timer
+  // Initialize data and test timers
+  dataStartTime = millis();
   testTimeStart = millis();
 
   // LCD update interupt
@@ -386,24 +377,18 @@ void setup() {
   blinkTimer.priority(1);                           // Priority 0 is highest, 255 is lowest
   
   // Send data to slave interupt
-  dataSlaveSend.begin(sendDataSlave, 500000);
+  dataSlaveSend.begin(sendDataSlave, 500000);       // Send data to the slave teensy every 500 ms
   dataSlaveSend.priority(0);
 
-  // Set analog resolution
-  analogReadResolution(analogResolution);
-
+  analogReadResolution(analogResolution);           // Set analog resolution
 }
 
-int stopCount = 0;
-int stopLimit = 25;
 void loop() {
   // Check if time to read and send/log data
   if (millis()-dataStartTime >= dataDelay){
-    stopCount++;
     getData();                                              // Get sensor data
-    //inletFluidTemperature = thermocouple.readCelsius();     // degree celcius
     testTime = (millis() - testTimeStart);                  // Get current test time in milliseconds
-    testTimePrint = testTime * 0.0010;                       // Current test time in seconds 
+    testTimePrint = testTime * 0.001;                       // Current test time in seconds 
     dataStartTime = millis();                               // Restart timer for data
     //sendData();                                             // Send data to MATLAB
     //checkThermalRunaway();                                  // Check that all heating elements are safe
@@ -411,9 +396,9 @@ void loop() {
   }
 
   // If stop test condition met, stop test
-  // if (stopCount >= stopLimit){
-  //   endTest();
-  // }
+  if (endTesting){
+    endTest();
+  }
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
   // String incomingByte;
