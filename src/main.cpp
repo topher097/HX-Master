@@ -12,7 +12,6 @@
 #include <SD.h>                   // For logging to SD card
 #include <SPI.h>                  // For SPI card access
 #include <i2c_t3.h>               // For multiple I2C channels
-#pragma once
 
 // Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
