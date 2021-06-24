@@ -96,6 +96,7 @@ void sendData(){
     Serial.print(inletPressureDownstream);      Serial.print(',');
     Serial.print(outletPressureVapor);          Serial.print(',');
     Serial.print(outletPressureLiquid);         Serial.print(',');
+    Serial.print(heatEnergyDensity);            Serial.print(',');
     Serial.print(heaterTemperature1);           Serial.print(',');
     Serial.print(heaterTemperature2);           Serial.print(',');
     Serial.print(heaterTemperature3);           Serial.print(',');
@@ -108,15 +109,16 @@ void sendData(){
     Serial.print(averageBoilSurfaceTemp);       Serial.print(',');
     Serial.print(inletFlowRate);                Serial.print(',');
     Serial.print(inletFluidTemperature);        Serial.print(',');
+    Serial.print(targetFluidTemperature);       Serial.print(',');
     Serial.print(slaveData.frequency1);         Serial.print(',');
     Serial.print(slaveData.frequency2);         Serial.print(',');
-    Serial.print(slaveData.amplitude1);         Serial.print(',');
-    Serial.print(slaveData.amplitude2);         Serial.print(',');
+    Serial.print(slaveData.amplitude1*v_mult);  Serial.print(',');
+    Serial.print(slaveData.amplitude2*v_mult);  Serial.print(',');
     Serial.print(slaveData.phase1);             Serial.print(',');
     Serial.print(slaveData.phase2);             Serial.print(',');
     Serial.print(slaveData.enable1);            Serial.print(',');
     Serial.print(slaveData.enable2);            Serial.print(',');
-    Serial.print(endTesting);                   
+    Serial.print(endTesting);                 
     Serial.write(13);   // Carriage return "CR"
     Serial.write(10);   // Linefeed "LF"
 }
@@ -281,6 +283,9 @@ void getData(){
 
   // Read and calcualte inlet fluid temp
   inletFluidTemperature = thermocouple.readCelsius();            // degree celcius, instant reading
+  if (isnan(inletFluidTemperature)){
+    inletFluidTemperature = -1;
+  }
 }
 
 // End all data collection and sending and save data
@@ -335,16 +340,20 @@ void decodeMATLABSerial(string inputString){
   }
   
   // Take elements of vector and save to appropriate variables
-  int i = 1;
-  slaveData.frequency1 = v[i]; i++;
-  slaveData.frequency2 = v[i]; i++;
-  slaveData.amplitude1 = v[i]; i++;
-  slaveData.amplitude2 = v[i]; i++;
-  slaveData.phase1     = v[i]; i++;
-  slaveData.phase2     = v[i]; i++;
-  slaveData.enable1    = (int)v[i]; i++;
-  slaveData.enable2    = (int)v[i]; i++;
-  endTesting = (int)v[i];
+  int i = 0;
+  slaveData.enable1       = (int)v[i];    i++;
+  slaveData.frequency1    = v[i];         i++;
+  slaveData.amplitude1    = v[i]/v_mult;  i++;
+  slaveData.phase1        = v[i];         i++;
+  slaveData.enable2       = (int)v[i];    i++;
+  slaveData.frequency2    = v[i];         i++;
+  slaveData.amplitude2    = v[i]/v_mult;  i++;
+  slaveData.phase2        = v[i];         i++;
+  heatEnergyDensity       = v[i];         i++;
+  targetFluidTemperature  = v[i];         i++;
+  enableHeaters           = (int)v[i];    i++;
+  enableRopeHeater        = (int)v[i];    i++;
+  endTesting              = (int)v[i];
 }
 
 
@@ -401,7 +410,7 @@ void setup() {
 
   // LCD update interupt
   uint16_t updateDelay;
-  uint16_t minDelay = 250;
+  uint16_t minDelay = 500;
   if (dataDelay > minDelay){updateDelay = dataDelay;}
   else {updateDelay = minDelay;}
   updateLCDTimer.begin(updateLCD, updateDelay*1000);
@@ -421,27 +430,25 @@ void loop() {
     testTime = (millis() - testTimeStart);                  // Get current test time in milliseconds
     testTimePrint = testTime * 0.001;                       // Current test time in seconds 
     dataStartTime = millis();                               // Restart timer for data
-    //sendData();                                             // Send data to MATLAB
+    sendData();                                             // Send data to MATLAB
     //checkThermalRunaway();                                  // Check that all heating elements are safe
     //saveDataToSD()                                          // Saves the data to a CSV file on the SD card
-    //ETout.sendData();
-    //Serial.println("Sent to slave");
   }
 
   // If stop test condition met, stop test
   if (endTesting){
-    endTest();
+    //endTest();
   }
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
-  String incomingString;
-  if (Serial.available() > 0) {
-    incomingString = Serial.readString();
-    Serial.print("USB received: "); Serial.println(incomingString);
-    decodeMATLABSerial(incomingString.c_str());   // Unpacks incoming string and updates variables
+  string incomingString;
+  if (Serial.available() > 5) {
+    incomingString = Serial.readStringUntil('?').c_str();
+    //Serial.print("USB received: "); Serial.println(incomingString);
+    decodeMATLABSerial(incomingString);           // Unpacks incoming string and updates variables
     for (byte i=0; i < 3; i++){
       ETout.sendData();                           // Send updated data to the slave teensy n times to make sure slave got it
-      delay(20);
+      delay(10);
     }
   }
   
