@@ -141,3 +141,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+lib/Adafruit-MAX31855-library
+lib/Arduino-EasyTransfer
+lib/i2c_t3
+lib/LiquidCrystal_I2C
