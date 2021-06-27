@@ -13,6 +13,7 @@
 #include <SPI.h>                  // For SPI card access
 #include <i2c_t3.h>               // For multiple I2C channels
 #include <EasyTransfer.h>         // For slave-master communication
+#include <RTClib.h>               // For PCF8523 RTC module
 
 // Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
@@ -36,10 +37,10 @@ EasyTransfer ETout;
 
 // I2C devices
 LiquidCrystal_I2C lcd(0x27,20,4);         // Address for LCD
+RTC_PCF8523 rtc;                          // RTC module object
 
 // SPI devices
-//Adafruit_MAX31855 thermocouple(IFT_SCK, IFT_CS, IFT_MISO);      // Software SPI implementation
-Adafruit_MAX31855 thermocouple(IFT_CS);                         // Hardware SPI implementation
+Adafruit_MAX31855 thermocouple(IFT_CS);   // Hardware SPI implementation
 
 // Timer objects
 IntervalTimer blinkTimer;
@@ -74,7 +75,6 @@ void blinkLED() {
       ledState = LOW;
   }
   digitalWrite(BLINK, ledState);
-  //Serial.println("BLINK");
 }
 
 // Reset the piezo properties to the default values
@@ -223,15 +223,6 @@ void getData(){
   inletPressureDownstream = 14.5 + rand()/RAND_MAX;    // for testing
   outletPressureVapor = outletPressureVapor*weight + instantOutletPressureVapor*(1-weight);
   outletPressureLiquid = outletPressureLiquid*weight + instantOutletPressureLiquid*(1-weight);
-  
-  // Serial.print(inletPressureUpstream);
-  // Serial.print(", ");
-  // Serial.print(inletPressureDownstream);
-  // Serial.print(", ");
-  // Serial.print(outletPressureVapor);
-  // Serial.print(", ");
-  // Serial.print(outletPressureLiquid);
-  // Serial.println("");
 
   // Calculate the inlet flow rate
   weight = 0.1;
@@ -240,22 +231,10 @@ void getData(){
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
   float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
-  
-  // Serial.print(testTimePrint);
-  // Serial.print(", ");
-  // Serial.print(inletFlowRate);
-  // Serial.print(", ");
-  // Serial.println(inletPressureUpstream-inletPressureDownstream);
-
 
   // Read and calculate heater module temps
   heaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
   
-  //heaterTemperature2 = calcTempHeaterModuleThermistor((float)analogRead(HMT2)/maxAnalog*3.3);     // degree celcius
-  //heaterTemperature3 = calcTempHeaterModuleThermistor((float)analogRead(HMT3)/maxAnalog*3.3);     // degree celcius
-  //heaterTemperature4 = calcTempHeaterModuleThermistor((float)analogRead(HMT4)/maxAnalog*3.3);     // degree celcius
-  //heaterTemperature5 = calcTempHeaterModuleThermistor((float)analogRead(HMT5)/maxAnalog*3.3);     // degree celcius   
-
   // Read and calculate boil surface temps
   float instantBoilSurfaceTemperature1 = calcTempBoilSurfaceThermistor((float)analogRead(BST1)/maxAnalog*3.3);    // degree celcius
   float instantBoilSurfaceTemperature2 = calcTempBoilSurfaceThermistor((float)analogRead(BST2)/maxAnalog*3.3);    // degree celcius
@@ -269,15 +248,6 @@ void getData(){
   boilSurfaceTemperature3 = boilSurfaceTemperature3*weight + instantBoilSurfaceTemperature3*(1-weight);
   boilSurfaceTemperature4 = boilSurfaceTemperature4*weight + instantBoilSurfaceTemperature4*(1-weight);
   
-  // Serial.print(boilSurfaceTemperature1);
-  // Serial.print(", ");
-  // Serial.print(boilSurfaceTemperature2);
-  // Serial.print(", ");
-  // Serial.print(boilSurfaceTemperature3);
-  // Serial.print(", ");
-  // Serial.print(boilSurfaceTemperature4);
-  // Serial.println("");
-
   // Calculate the average boil surface temperature
   averageBoilSurfaceTemp = (boilSurfaceTemperature1 + boilSurfaceTemperature2 + boilSurfaceTemperature3 + boilSurfaceTemperature4)/4; // degree celcius
 
@@ -299,29 +269,29 @@ void endTest(){
   slaveData.enable2 = false;
   ETout.sendData();
 
-  // Save data to the SD card
-
+  // Close the data testing file
+  
 
   // Display to LCD screen
-  lcd.clear();
+  // lcd.clear();
 
   // Run until system is reset
-  uint16_t blinkCharacterDelay = 1000;
-  uint64_t blinkCharacterTimer = millis()+blinkCharacterDelay;
-  bool blink = true;
-  while (true){
-    lcd.setCursor(0, 0);
-    if (millis() - blinkCharacterTimer >= blinkCharacterDelay){
-      if (blink){lcd.print("*TEST HAS CONCLUDED*"); blink = !blink;}
-      else {lcd.print(" TEST HAS CONCLUDED "); blink = !blink;}
-      blinkCharacterTimer = millis();
-    }
+  // uint16_t blinkCharacterDelay = 1000;
+  // uint64_t blinkCharacterTimer = millis()+blinkCharacterDelay;
+  // bool blink = true;
+  // while (true){
+  //   lcd.setCursor(0, 0);
+  //   if (millis() - blinkCharacterTimer >= blinkCharacterDelay){
+  //     if (blink){lcd.print("*TEST HAS CONCLUDED*"); blink = !blink;}
+  //     else {lcd.print(" TEST HAS CONCLUDED "); blink = !blink;}
+  //     blinkCharacterTimer = millis();
+  //   }
     
-    lcd.setCursor(0, 2);
-    lcd.print(" RESTART SYSTEM FOR");
-    lcd.setCursor(0, 3);
-    lcd.print("     NEXT  TEST");
-  }
+  //   lcd.setCursor(0, 2);
+  //   lcd.print(" RESTART SYSTEM FOR");
+  //   lcd.setCursor(0, 3);
+  //   lcd.print("     NEXT  TEST");
+  // }
 }
 
 // Decode the serial from MATLAB and update variable values
@@ -353,18 +323,14 @@ void decodeMATLABSerial(string inputString){
   targetFluidTemperature  = v[i];         i++;
   enableHeaters           = (int)v[i];    i++;
   enableRopeHeater        = (int)v[i];    i++;
-  endTesting              = (int)v[i];
+  endTesting              = (int)v[i];    i++;
+  startTesting            = (int)v[i];
 }
 
-
 void setup() {
-  ETout.begin(details(slaveData), &SLAVE_SERIAL);        // Serial comminucation with the slave teensy
-
-  // Setup piezo properties
-  resetPiezoProperties();
-
-  // Send the piezo properties to the slave teensy
-  ETout.sendData();
+  ETout.begin(details(slaveData), &SLAVE_SERIAL);     // Serial comminucation with the slave teensy
+  resetPiezoProperties();                             // Setup piezo properties
+  ETout.sendData();                                   // Send the piezo properties to the slave teensy
 
   // Initialize pinmodes
   pinMode(BLINK, OUTPUT);   // Status LED
@@ -421,6 +387,20 @@ void setup() {
   blinkTimer.priority(1);                           // Priority 0 is highest, 255 is lowest
   
   analogReadResolution(analogResolution);           // Set analog resolution
+
+  // RTC module for keeping time
+  if (! rtc.initialized() || rtc.lostPower()) {
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    DateTime t = DateTime(rtc.now().unixtime()+21);   // Adds 21 seconds to time to adjust for compile+upload time
+    rtc.adjust(t);
+  }
+  rtc.start();
+  float drift         = 0;                             // seconds plus or minus over oservation period - set to 0 to cancel previous calibration.
+  float period_sec    = (7 * 86400);                    // total obsevation period in seconds (86400 = seconds in 1 day:  7 days = (7 * 86400) seconds )
+  float deviation_ppm = (drift / period_sec * 1000000); // deviation in parts per million (μs)
+  float drift_unit    = 4.34;                           // use with offset mode PCF8523_TwoHours
+  int offset = round(deviation_ppm / drift_unit);
+  rtc.calibrate(PCF8523_TwoHours, offset);
 }
 
 void loop() {
@@ -432,13 +412,30 @@ void loop() {
     dataStartTime = millis();                               // Restart timer for data
     sendData();                                             // Send data to MATLAB
     //checkThermalRunaway();                                  // Check that all heating elements are safe
-    //saveDataToSD()                                          // Saves the data to a CSV file on the SD card
+                                       
+    // if (runningTest){
+    //   // Create string of row of values to send to SD card
+    //   // Saves the data to a CSV file on the SD card
+    // }
   }
 
-  // If stop test condition met, stop test
-  if (endTesting){
-    //endTest();
-  }
+  // // If stop test condition met, stop test
+  // if (endTesting){
+  //   runningTest = 0;              // Stop test
+
+  //   // Turn off piezo 1 and 2
+  //   slaveData.enable1 = false;
+  //   slaveData.enable2 = false;
+  //   ETout.sendData();
+  // }
+
+  // // Gets the string of the data csv file when MATLAB starts a test
+  // if (startTesting){
+  //   DateTime now = rtc.now();  
+  //   sprintf(fileName, "HX1_%02u-%02u-%02u__%02u_%02u_%02u.csv", (now.year()-2000), now.month(), now.day(), now.hour(), now.minute(), now.second());
+  //   startTesting = 0;
+  //   runningTest = 1;
+  // }
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
   string incomingString;
