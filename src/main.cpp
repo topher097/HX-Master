@@ -13,10 +13,7 @@
 #include <SPI.h>                  // For SPI card access
 #include <i2c_t3.h>               // For multiple I2C channels
 #include <EasyTransfer.h>         // For slave-master communication
-<<<<<<< HEAD
-=======
 #include <RTClib.h>               // For PCF8523 RTC module
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 
 // Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
@@ -40,17 +37,10 @@ EasyTransfer ETout;
 
 // I2C devices
 LiquidCrystal_I2C lcd(0x27,20,4);         // Address for LCD
-<<<<<<< HEAD
-
-// SPI devices
-//Adafruit_MAX31855 thermocouple(IFT_SCK, IFT_CS, IFT_MISO);      // Software SPI implementation
-Adafruit_MAX31855 thermocouple(IFT_CS);                         // Hardware SPI implementation
-=======
 RTC_PCF8523 rtc;                          // RTC module object
 
 // SPI devices
 Adafruit_MAX31855 thermocouple(IFT_CS);   // Hardware SPI implementation
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 
 // Timer objects
 IntervalTimer blinkTimer;
@@ -85,10 +75,6 @@ void blinkLED() {
       ledState = LOW;
   }
   digitalWrite(BLINK, ledState);
-<<<<<<< HEAD
-  //Serial.println("BLINK");
-=======
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 }
 
 // Reset the piezo properties to the default values
@@ -237,18 +223,6 @@ void getData(){
   inletPressureDownstream = 14.5 + rand()/RAND_MAX;    // for testing
   outletPressureVapor = outletPressureVapor*weight + instantOutletPressureVapor*(1-weight);
   outletPressureLiquid = outletPressureLiquid*weight + instantOutletPressureLiquid*(1-weight);
-<<<<<<< HEAD
-  
-  // Serial.print(inletPressureUpstream);
-  // Serial.print(", ");
-  // Serial.print(inletPressureDownstream);
-  // Serial.print(", ");
-  // Serial.print(outletPressureVapor);
-  // Serial.print(", ");
-  // Serial.print(outletPressureLiquid);
-  // Serial.println("");
-=======
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 
   // Calculate the inlet flow rate
   weight = 0.1;
@@ -257,28 +231,10 @@ void getData(){
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
   float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
-<<<<<<< HEAD
-  
-  // Serial.print(testTimePrint);
-  // Serial.print(", ");
-  // Serial.print(inletFlowRate);
-  // Serial.print(", ");
-  // Serial.println(inletPressureUpstream-inletPressureDownstream);
-
-=======
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 
   // Read and calculate heater module temps
   heaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
   
-<<<<<<< HEAD
-  //heaterTemperature2 = calcTempHeaterModuleThermistor((float)analogRead(HMT2)/maxAnalog*3.3);     // degree celcius
-  //heaterTemperature3 = calcTempHeaterModuleThermistor((float)analogRead(HMT3)/maxAnalog*3.3);     // degree celcius
-  //heaterTemperature4 = calcTempHeaterModuleThermistor((float)analogRead(HMT4)/maxAnalog*3.3);     // degree celcius
-  //heaterTemperature5 = calcTempHeaterModuleThermistor((float)analogRead(HMT5)/maxAnalog*3.3);     // degree celcius   
-
-=======
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
   // Read and calculate boil surface temps
   float instantBoilSurfaceTemperature1 = calcTempBoilSurfaceThermistor((float)analogRead(BST1)/maxAnalog*3.3);    // degree celcius
   float instantBoilSurfaceTemperature2 = calcTempBoilSurfaceThermistor((float)analogRead(BST2)/maxAnalog*3.3);    // degree celcius
@@ -292,18 +248,6 @@ void getData(){
   boilSurfaceTemperature3 = boilSurfaceTemperature3*weight + instantBoilSurfaceTemperature3*(1-weight);
   boilSurfaceTemperature4 = boilSurfaceTemperature4*weight + instantBoilSurfaceTemperature4*(1-weight);
   
-<<<<<<< HEAD
-  // Serial.print(boilSurfaceTemperature1);
-  // Serial.print(", ");
-  // Serial.print(boilSurfaceTemperature2);
-  // Serial.print(", ");
-  // Serial.print(boilSurfaceTemperature3);
-  // Serial.print(", ");
-  // Serial.print(boilSurfaceTemperature4);
-  // Serial.println("");
-
-=======
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
   // Calculate the average boil surface temperature
   averageBoilSurfaceTemp = (boilSurfaceTemperature1 + boilSurfaceTemperature2 + boilSurfaceTemperature3 + boilSurfaceTemperature4)/4; // degree celcius
 
@@ -325,31 +269,6 @@ void endTest(){
   slaveData.enable2 = false;
   ETout.sendData();
 
-<<<<<<< HEAD
-  // Save data to the SD card
-
-
-  // Display to LCD screen
-  lcd.clear();
-
-  // Run until system is reset
-  uint16_t blinkCharacterDelay = 1000;
-  uint64_t blinkCharacterTimer = millis()+blinkCharacterDelay;
-  bool blink = true;
-  while (true){
-    lcd.setCursor(0, 0);
-    if (millis() - blinkCharacterTimer >= blinkCharacterDelay){
-      if (blink){lcd.print("*TEST HAS CONCLUDED*"); blink = !blink;}
-      else {lcd.print(" TEST HAS CONCLUDED "); blink = !blink;}
-      blinkCharacterTimer = millis();
-    }
-    
-    lcd.setCursor(0, 2);
-    lcd.print(" RESTART SYSTEM FOR");
-    lcd.setCursor(0, 3);
-    lcd.print("     NEXT  TEST");
-  }
-=======
   // Close the data testing file
   
 
@@ -373,7 +292,6 @@ void endTest(){
   //   lcd.setCursor(0, 3);
   //   lcd.print("     NEXT  TEST");
   // }
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 }
 
 // Decode the serial from MATLAB and update variable values
@@ -405,20 +323,6 @@ void decodeMATLABSerial(string inputString){
   targetFluidTemperature  = v[i];         i++;
   enableHeaters           = (int)v[i];    i++;
   enableRopeHeater        = (int)v[i];    i++;
-<<<<<<< HEAD
-  endTesting              = (int)v[i];
-}
-
-
-void setup() {
-  ETout.begin(details(slaveData), &SLAVE_SERIAL);        // Serial comminucation with the slave teensy
-
-  // Setup piezo properties
-  resetPiezoProperties();
-
-  // Send the piezo properties to the slave teensy
-  ETout.sendData();
-=======
   endTesting              = (int)v[i];    i++;
   startTesting            = (int)v[i];
 }
@@ -427,7 +331,6 @@ void setup() {
   ETout.begin(details(slaveData), &SLAVE_SERIAL);     // Serial comminucation with the slave teensy
   resetPiezoProperties();                             // Setup piezo properties
   ETout.sendData();                                   // Send the piezo properties to the slave teensy
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 
   // Initialize pinmodes
   pinMode(BLINK, OUTPUT);   // Status LED
@@ -484,8 +387,6 @@ void setup() {
   blinkTimer.priority(1);                           // Priority 0 is highest, 255 is lowest
   
   analogReadResolution(analogResolution);           // Set analog resolution
-<<<<<<< HEAD
-=======
 
   // RTC module for keeping time
   if (! rtc.initialized() || rtc.lostPower()) {
@@ -500,7 +401,6 @@ void setup() {
   float drift_unit    = 4.34;                           // use with offset mode PCF8523_TwoHours
   int offset = round(deviation_ppm / drift_unit);
   rtc.calibrate(PCF8523_TwoHours, offset);
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 }
 
 void loop() {
@@ -512,15 +412,6 @@ void loop() {
     dataStartTime = millis();                               // Restart timer for data
     sendData();                                             // Send data to MATLAB
     //checkThermalRunaway();                                  // Check that all heating elements are safe
-<<<<<<< HEAD
-    //saveDataToSD()                                          // Saves the data to a CSV file on the SD card
-  }
-
-  // If stop test condition met, stop test
-  if (endTesting){
-    //endTest();
-  }
-=======
                                        
     // if (runningTest){
     //   // Create string of row of values to send to SD card
@@ -545,7 +436,6 @@ void loop() {
   //   startTesting = 0;
   //   runningTest = 1;
   // }
->>>>>>> parent of 5b9deba (Merge branch 'master' of https://github.com/topher097/HX-Master)
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
   string incomingString;
