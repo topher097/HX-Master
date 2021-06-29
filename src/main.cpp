@@ -14,6 +14,7 @@
 #include <i2c_t3.h>               // For multiple I2C channels
 #include <EasyTransfer.h>         // For slave-master communication
 #include <RTClib.h>               // For PCF8523 RTC module
+#include <Bounce2.h>              // For reseting piezo properties
 
 // Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
@@ -45,6 +46,9 @@ Adafruit_MAX31855 thermocouple(IFT_CS);   // Hardware SPI implementation
 // Timer objects
 IntervalTimer blinkTimer;
 IntervalTimer updateLCDTimer;
+
+// Bounce button
+Bounce restartButton = Bounce();        // Initialate restart button
 
 // Special characters for LCD
 uint8_t backSlashLCD [8]= { 0x00, 0x10, 0x08, 0x04, 0x02, 0x01, 0x00, 0x00 };
@@ -159,9 +163,14 @@ void checkThermalRunaway(){
     if (safeHeater){safeHeaterString = _true;} else {safeHeaterString = _false;}
     if (safeBoilSurface){safeBoilSurfaceString = _true;} else {safeBoilSurfaceString = _false;}
     if (safeInletTemp){safeInletTempString = _true;} else {safeInletTempString = _false;}
+
+    // Send data to MATLAB
+    enableHeaters = false;
+    enableRopeHeater = false;
+    targetFluidTemperature = 0;
+    heatEnergyDensity = 0;
+    sendData();
     
-
-
     // Run until system is reset, refresh screen every second
     u_int16_t errorTimeStart = millis();
     u_int16_t errorDisplayRefresh = 1000;     // Refresh time in ms
@@ -209,6 +218,9 @@ void updateLCD(){
 
 // Get all sensor data and calculate the appropriate variables
 void getData(){
+  // Save vars used in PID control to old variable before being overwritten
+  inletFluidTemperatureOld  = inletFluidTemperature;
+
   // Read and calculate pressure sensor values
   float instantInletPressureUpstream = calcPressure((float)analogRead(P1)/maxAnalog*3.3);      // psi
   float instantInletPressureDownstream = calcPressure((float)analogRead(P2)/maxAnalog*3.3);    // psi
@@ -254,44 +266,26 @@ void getData(){
   // Read and calcualte inlet fluid temp
   inletFluidTemperature = thermocouple.readCelsius();            // degree celcius, instant reading
   if (isnan(inletFluidTemperature)){
-    inletFluidTemperature = -1;
+    inletFluidTemperature = inletMaxTemp*2;                      // If no signal from thermocouple set temp to max value*2 to trigger thermal runaway
   }
 }
 
 // End all data collection and sending and save data
 void endTest(){
-  // Stop the interval timers
-  //blinkTimer.end();
-  updateLCDTimer.end();
-
+  digitalWrite(RUNNING, LOW);
   // Turn off piezo 1 and 2
+  int tempEnable1 = slaveData.enable1;
+  int tempEnable2 = slaveData.enable2;
   slaveData.enable1 = false;
   slaveData.enable2 = false;
   ETout.sendData();
+  slaveData.enable1 = tempEnable1;
+  slaveData.enable2 = tempEnable2;
+}
 
-  // Close the data testing file
-  
-
-  // Display to LCD screen
-  // lcd.clear();
-
-  // Run until system is reset
-  // uint16_t blinkCharacterDelay = 1000;
-  // uint64_t blinkCharacterTimer = millis()+blinkCharacterDelay;
-  // bool blink = true;
-  // while (true){
-  //   lcd.setCursor(0, 0);
-  //   if (millis() - blinkCharacterTimer >= blinkCharacterDelay){
-  //     if (blink){lcd.print("*TEST HAS CONCLUDED*"); blink = !blink;}
-  //     else {lcd.print(" TEST HAS CONCLUDED "); blink = !blink;}
-  //     blinkCharacterTimer = millis();
-  //   }
-    
-  //   lcd.setCursor(0, 2);
-  //   lcd.print(" RESTART SYSTEM FOR");
-  //   lcd.setCursor(0, 3);
-  //   lcd.print("     NEXT  TEST");
-  // }
+void startTest(){
+  digitalWrite(RUNNING, HIGH);
+  ETout.sendData();
 }
 
 // Decode the serial from MATLAB and update variable values
@@ -323,8 +317,7 @@ void decodeMATLABSerial(string inputString){
   targetFluidTemperature  = v[i];         i++;
   enableHeaters           = (int)v[i];    i++;
   enableRopeHeater        = (int)v[i];    i++;
-  endTesting              = (int)v[i];    i++;
-  startTesting            = (int)v[i];
+  endTesting              = (int)v[i];
 }
 
 void setup() {
@@ -334,6 +327,7 @@ void setup() {
 
   // Initialize pinmodes
   pinMode(BLINK, OUTPUT);   // Status LED
+  pinMode(RUNNING, OUTPUT); // Running test LED
   pinMode(P1, INPUT);       // Inlet upstream pressure sensor (from op-amp)
   pinMode(P2, INPUT);       // Inlet downstream pressure sensor (from op-amp)
   pinMode(P3, INPUT);       // Outlet vapor pressure sensor (from op-amp)
@@ -386,7 +380,13 @@ void setup() {
   blinkTimer.begin(blinkLED, blinkDelay*1000);      // Run the blinkLED function at delay speed (ns)
   blinkTimer.priority(1);                           // Priority 0 is highest, 255 is lowest
   
+  // Analog setup
   analogReadResolution(analogResolution);           // Set analog resolution
+  analogWriteFrequency(RHD, 30);                    // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+
+  // Setup reset piezo properties button
+  restartButton.attach(DEFAULT, INPUT);     // Attach the debouncer to the pins
+  restartButton.interval(25);               // Bounce delay in ms
 
   // RTC module for keeping time
   if (! rtc.initialized() || rtc.lostPower()) {
@@ -412,45 +412,55 @@ void loop() {
     dataStartTime = millis();                               // Restart timer for data
     sendData();                                             // Send data to MATLAB
     //checkThermalRunaway();                                  // Check that all heating elements are safe
-                                       
-    // if (runningTest){
-    //   // Create string of row of values to send to SD card
-    //   // Saves the data to a CSV file on the SD card
-    // }
   }
 
-  // // If stop test condition met, stop test
-  // if (endTesting){
-  //   runningTest = 0;              // Stop test
-
-  //   // Turn off piezo 1 and 2
-  //   slaveData.enable1 = false;
-  //   slaveData.enable2 = false;
-  //   ETout.sendData();
-  // }
-
-  // // Gets the string of the data csv file when MATLAB starts a test
-  // if (startTesting){
-  //   DateTime now = rtc.now();  
-  //   sprintf(fileName, "HX1_%02u-%02u-%02u__%02u_%02u_%02u.csv", (now.year()-2000), now.month(), now.day(), now.hour(), now.minute(), now.second());
-  //   startTesting = 0;
-  //   runningTest = 1;
-  // }
+  // Start or stop test
+  if (tempEnd != endTesting){
+    if (endTesting){endTest();}
+    else{startTest();}
+  }
+  tempEnd = endTesting;
 
   // Check if new serial in from MATLAB and send that data to slave Teensy for piezo control
   string incomingString;
   if (Serial.available() > 5) {
     incomingString = Serial.readStringUntil('?').c_str();
-    //Serial.print("USB received: "); Serial.println(incomingString);
     decodeMATLABSerial(incomingString);           // Unpacks incoming string and updates variables
-    for (byte i=0; i < 3; i++){
+    for (byte i=0; i < 2; i++){
       ETout.sendData();                           // Send updated data to the slave teensy n times to make sure slave got it
       delay(10);
     }
   }
   
+  // Check if reset piezo properties button was pushed
+  restartButton.update();
+  if (restartButton.fell()){
+    resetPiezoProperties();
+    ETout.sendData();
+  }
 
   // Control heater modules
+  if (enableHeaters){
+    // Check if the target heat energy density changed if it did then update the PWM output signal
+    if (heatEnergyDensity != heatEnergyDensityOld){
+      if (heatEnergyDensity > heatEnergyDensityMax){heatEnergyDensity = heatEnergyDensityMax;}
+      int PWM_value = map(heatEnergyDensity, 0, heatEnergyDensityMax, 0, 255);    // map(value, fromLow, fromHigh, toLow, toHigh)
+      analogWrite(HMD1, PWM_value);
+    }
+  }
+  else{
+    analogWrite(HMD1, 0);   // Turn off the heaters
+  }
+
+  // Control rope heater
+  if (enableRopeHeater){
+
+    int PWM_value = 0;
+    analogWrite(RHD, PWM_value);
+  }
+  else{
+    analogWrite(RHD, 0);
+  }
 
 }
 

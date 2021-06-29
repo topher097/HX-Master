@@ -37,8 +37,9 @@ namespace varDefinitions
     float boilSurfaceTempOffset = -366.25;
     
     // Thermocouple for inlet flow temp vars
-    float inletFluidTemperature = 1.0;
-    float targetFluidTemperature = 55.0;
+    float inletFluidTemperature     = 1.0;
+    float inletFluidTemperatureOld  = 1.0;
+    float targetFluidTemperature    = 55.0;
     bool enableRopeHeater = true;
 
     // Valve potentiometer vars
@@ -58,28 +59,22 @@ namespace varDefinitions
     uint64_t testTime;                      // time since program started in milliseconds
     uint64_t testTimeStart;                 // time of when program starts
     double testTimePrint;                   // Print the time to serial for MATLAB
-    bool endTesting = false;                // Bool to end the test
-    bool startTesting = false;              // Bool to get data file name
-    bool runningTest = false;               // Bool to log data to SD card file
-    char fileName[100];                     // Filename for csv file to SD card
-    String bufferString = "";               // String to write to SD card file
-    String SDbufferString = "";             // String with correct byte buffer to write
+    bool endTesting = 1;                // Bool to end the test
+    bool tempEnd = endTesting;
 
     // Heater module cartridge controller vars
-    int heatEnergyDensity = 50;         // Desired effective wattage per cm^2 to be pumped through heater modules
-    bool enableHeaters = true;          // Bool for enabling the heater cartridges
+    int heatEnergyDensity       = 50;           // Desired effective wattage per cm^2 to be pumped through heater modules
+    int heatEnergyDensityMax    = 100;          // Max achievable energy density with current cartridges 
+    bool enableHeaters          = true;         // Bool for enabling the heater cartridges
+    int heatEnergyDensityOld    = heatEnergyDensity;
 
     // Protection vars
     bool safeHeater = true;
     bool safeBoilSurface = true;
     bool safeInletTemp = true;
-    float heaterMaxTemp = 120.0;        // degree celcius
+    float heaterMaxTemp = 210.0;        // degree celcius
     float boilSurfaceMaxTemp = 90.0;    // degree celcius
     float inletMaxTemp = 65;            // degree celcius
-
-    // Serial communcation between teensys vars
-    uint16_t rx1_byte;                  // Teensy slave rx
-    uint16_t tx1_byte;                  // Teensy slave tx
 
     // Blink vars
     int ledState = LOW;

@@ -26,6 +26,8 @@ namespace pinDefinitions
     const int HMD4 = 5;        // MOSFET for heater module 4
     const int HMD5 = 6;        // MOSFET for heater module 5
     const int RHD = 7;         // MOSFET for rope heater
+    const int RUNNING = 8;     // Running LED
+    const int DEFAULT = 9;     // Button for reseting to default piezo properties
     const int IFT_CS = 37;     // CS pin for thermocouple MAX31855 module
     const int IFT_MISO = 12;   // MISO pin for thermocouple MAX31855 module
     const int IFT_SCK = 13;    // SCK pin for thermocouple MAX31855 
