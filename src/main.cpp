@@ -15,6 +15,7 @@
 #include <EasyTransfer.h>         // For slave-master communication
 #include <RTClib.h>               // For PCF8523 RTC module
 #include <Bounce2.h>              // For reseting piezo properties
+#include <PID_v1.h>               // Library for PID control of rope heater
 
 // Hardware serial (UART) to slave
 #define SLAVE_SERIAL Serial8
@@ -25,12 +26,14 @@
 #include <varDefinitions.h>         // Header file with all other variables used
 #include <calculations.h>           // Header file with calculations of temps and pressures
 #include <defaultPiezo.h>           // Header file with the default piezo properties
+#include <ropePIDvars.h>            // Header file with PID values for control loop of rope heater
 
 // Namespaces
 using namespace varDefinitions;
 using namespace pinDefinitions;
 using namespace coeffDefinitions;
 using namespace defaultPiezoProperties;
+using namespace ropePIDvars;
 using namespace std;
 
 // EasyTransfer objects
@@ -49,6 +52,9 @@ IntervalTimer updateLCDTimer;
 
 // Bounce button
 Bounce restartButton = Bounce();        // Initialate restart button
+
+// PID object for rope heater
+PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, P_ON_M, DIRECT);
 
 // Special characters for LCD
 uint8_t backSlashLCD [8]= { 0x00, 0x10, 0x08, 0x04, 0x02, 0x01, 0x00, 0x00 };
@@ -218,9 +224,6 @@ void updateLCD(){
 
 // Get all sensor data and calculate the appropriate variables
 void getData(){
-  // Save vars used in PID control to old variable before being overwritten
-  inletFluidTemperatureOld  = inletFluidTemperature;
-
   // Read and calculate pressure sensor values
   float instantInletPressureUpstream = calcPressure((float)analogRead(P1)/maxAnalog*3.3);      // psi
   float instantInletPressureDownstream = calcPressure((float)analogRead(P2)/maxAnalog*3.3);    // psi
@@ -383,6 +386,12 @@ void setup() {
   // Analog setup
   analogReadResolution(analogResolution);           // Set analog resolution
   analogWriteFrequency(RHD, 30);                    // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(HMD1, 30);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+
+  // Turn on the PID controller
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetTunings(Kp, Ki, Kd);
+  Setpoint = targetFluidTemperature;
 
   // Setup reset piezo properties button
   restartButton.attach(DEFAULT, INPUT);     // Attach the debouncer to the pins
@@ -430,6 +439,7 @@ void loop() {
       ETout.sendData();                           // Send updated data to the slave teensy n times to make sure slave got it
       delay(10);
     }
+    Setpoint = targetFluidTemperature;
   }
   
   // Check if reset piezo properties button was pushed
@@ -446,6 +456,7 @@ void loop() {
       if (heatEnergyDensity > heatEnergyDensityMax){heatEnergyDensity = heatEnergyDensityMax;}
       int PWM_value = map(heatEnergyDensity, 0, heatEnergyDensityMax, 0, 255);    // map(value, fromLow, fromHigh, toLow, toHigh)
       analogWrite(HMD1, PWM_value);
+      heatEnergyDensityOld = heatEnergyDensity;
     }
   }
   else{
@@ -453,15 +464,14 @@ void loop() {
   }
 
   // Control rope heater
-  if (enableRopeHeater){
-
-    int PWM_value = 0;
-    analogWrite(RHD, PWM_value);
+  if (enableRopeHeater){  
+    Input = inletFluidTemperature;
+    myPID.Compute();
+    analogWrite(RHD, Output);
   }
   else{
-    analogWrite(RHD, 0);
+    analogWrite(RHD, 0);    // Turn off the rope heater
   }
-
 }
 
 
