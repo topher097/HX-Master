@@ -6,9 +6,8 @@ namespace ropePIDvars
     //Define Variables we'll be connecting to
     double Setpoint, Input, Output;
 
-    //Define the aggressive and conservative Tuning Parameters
-    double aggKp=4, aggKi=0.2, aggKd=1;
-    double consKp=1, consKi=0.05, consKd=0.25;
+    // Define the constants
+    double Kp=1, Ki=0.05, Kd=0.25;
 }
 
 #endif
