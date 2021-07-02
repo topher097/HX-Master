@@ -248,7 +248,15 @@ void getData(){
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
 
   // Read and calculate heater module temps
-  heaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
+  float instantHeaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
+  
+  // Take weighted average of heater temps
+  weight = 0.1;
+  heaterTemperature1 = heaterTemperature1*weight + instantHeaterTemperature1*(1-weight);
+  heaterTemperature2 = heaterTemperature1;
+  heaterTemperature3 = heaterTemperature1;
+  heaterTemperature4 = heaterTemperature1;
+  heaterTemperature5 = heaterTemperature1;
   
   // Read and calculate boil surface temps
   float instantBoilSurfaceTemperature1 = calcTempBoilSurfaceThermistor((float)analogRead(BST1)/maxAnalog*3.3);    // degree celcius
@@ -385,8 +393,12 @@ void setup() {
   
   // Analog setup
   analogReadResolution(analogResolution);           // Set analog resolution
-  analogWriteFrequency(RHD, 30);                    // Change PWM frequency to ~1/2*VAC Hz = 30Hz
-  analogWriteFrequency(HMD1, 30);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(RHD, 5);                    // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(HMD1, 5);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(HMD2, 5);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(HMD3, 5);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(HMD4, 5);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
+  analogWriteFrequency(HMD5, 5);                   // Change PWM frequency to ~1/2*VAC Hz = 30Hz
 
   // Turn on the PID controller
   myPID.SetMode(AUTOMATIC);
@@ -450,21 +462,25 @@ void loop() {
   }
 
   // Control heater modules
-  if (enableHeaters){
-    // Check if the target heat energy density changed if it did then update the PWM output signal
-    if (heatEnergyDensity != heatEnergyDensityOld){
-      if (heatEnergyDensity > heatEnergyDensityMax){heatEnergyDensity = heatEnergyDensityMax;}
-      int PWM_value = map(heatEnergyDensity, 0, heatEnergyDensityMax, 0, 255);    // map(value, fromLow, fromHigh, toLow, toHigh)
-      analogWrite(HMD1, PWM_value);
-      heatEnergyDensityOld = heatEnergyDensity;
-    }
+  if (enableHeaters && endTesting==0){
+    if (heatEnergyDensity > heatEnergyDensityMax){heatEnergyDensity = heatEnergyDensityMax;}
+    int PWM_value = map(heatEnergyDensity, 0, heatEnergyDensityMax, 0, 255);    // map(value, fromLow, fromHigh, toLow, toHigh)
+    analogWrite(HMD1, PWM_value);
+    analogWrite(HMD2, PWM_value);
+    analogWrite(HMD3, PWM_value);
+    analogWrite(HMD4, PWM_value);
+    analogWrite(HMD5, PWM_value);
   }
   else{
     analogWrite(HMD1, 0);   // Turn off the heaters
+    analogWrite(HMD2, 0);
+    analogWrite(HMD3, 0);
+    analogWrite(HMD4, 0);
+    analogWrite(HMD5, 0);
   }
 
   // Control rope heater
-  if (enableRopeHeater){  
+  if (enableRopeHeater && endTesting==0){  
     Input = inletFluidTemperature;
     myPID.Compute();
     analogWrite(RHD, Output);

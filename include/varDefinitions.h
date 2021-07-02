@@ -40,7 +40,7 @@ namespace varDefinitions
     float inletFluidTemperature     = 1.0;
     float inletFluidTemperatureOld  = 1.0;
     float targetFluidTemperature    = 55.0;
-    bool enableRopeHeater = true;
+    bool enableRopeHeater = false;
 
     // Valve potentiometer vars
     int16_t valveRotation;
@@ -63,9 +63,9 @@ namespace varDefinitions
     bool tempEnd = endTesting;
 
     // Heater module cartridge controller vars
-    int heatEnergyDensity       = 50;           // Desired effective wattage per cm^2 to be pumped through heater modules
+    int heatEnergyDensity       = 10;           // Desired effective wattage per cm^2 to be pumped through heater modules
     int heatEnergyDensityMax    = 100;          // Max achievable energy density with current cartridges 
-    bool enableHeaters          = true;         // Bool for enabling the heater cartridges
+    bool enableHeaters          = false;         // Bool for enabling the heater cartridges
     int heatEnergyDensityOld    = heatEnergyDensity;
 
     // Protection vars
