@@ -136,6 +136,24 @@ void sendData(){
     Serial.write(10);   // Linefeed "LF"
 }
 
+// End all data collection and sending and save data
+void endTest(){
+  digitalWrite(RUNNING, LOW);
+  // Turn off piezo 1 and 2
+  int tempEnable1 = slaveData.enable1;
+  int tempEnable2 = slaveData.enable2;
+  slaveData.enable1 = false;
+  slaveData.enable2 = false;
+  ETout.sendData();
+  slaveData.enable1 = tempEnable1;
+  slaveData.enable2 = tempEnable2;
+}
+
+void startTest(){
+  digitalWrite(RUNNING, HIGH);
+  ETout.sendData();
+}
+
 // Checks if all of the thermistors don't have a thermal runaway, if there is a thermal runaway detected, turn off experiment
 void checkThermalRunaway(){
   // Heater modules
@@ -173,12 +191,23 @@ void checkThermalRunaway(){
     if (safeBoilSurface){safeBoilSurfaceString = _true;} else {safeBoilSurfaceString = _false;}
     if (safeInletTemp){safeInletTempString = _true;} else {safeInletTempString = _false;}
 
+    // Turn off heaters
+    analogWrite(RHD, 0);
+    analogWrite(HMD1, 0);
+    analogWrite(HMD2, 0);
+    analogWrite(HMD3, 0);
+    analogWrite(HMD4, 0);
+    analogWrite(HMD5, 0);
+
     // Send data to MATLAB
     enableHeaters = false;
     enableRopeHeater = false;
     targetFluidTemperature = 0;
     heatEnergyDensity = 0;
     sendData();
+
+    // End test
+    endTest();
     
     // Run until system is reset, refresh screen every second
     u_int16_t errorTimeStart = millis();
@@ -187,6 +216,7 @@ void checkThermalRunaway(){
     char loadingSybol;
     u_int16_t step = 0;
     while (true){
+      //Serial.println(thermocouple.readCelsius());
       // Displays error message on the LCD panel
       if (millis() - errorTimeStart >= errorDisplayRefresh){
         // Get current loading symbol
@@ -277,28 +307,12 @@ void getData(){
   averageBoilSurfaceTemp = (boilSurfaceTemperature1 + boilSurfaceTemperature2 + boilSurfaceTemperature3 + boilSurfaceTemperature4)/4; // degree celcius
 
   // Read and calcualte inlet fluid temp
-  inletFluidTemperature = thermocouple.readCelsius();            // degree celcius, instant reading
-  if (isnan(inletFluidTemperature)){
-    inletFluidTemperature = inletMaxTemp*2;                      // If no signal from thermocouple set temp to max value*2 to trigger thermal runaway
+  weight = 0.1;
+  float instantInletFluidTemperature = thermocouple.readCelsius();            // degree celcius, instant reading
+  if (isnan(instantInletFluidTemperature)){
+    instantInletFluidTemperature = inletFluidTemperature;                     // If no signal from thermocouple set temp to avg inlet temp
   }
-}
-
-// End all data collection and sending and save data
-void endTest(){
-  digitalWrite(RUNNING, LOW);
-  // Turn off piezo 1 and 2
-  int tempEnable1 = slaveData.enable1;
-  int tempEnable2 = slaveData.enable2;
-  slaveData.enable1 = false;
-  slaveData.enable2 = false;
-  ETout.sendData();
-  slaveData.enable1 = tempEnable1;
-  slaveData.enable2 = tempEnable2;
-}
-
-void startTest(){
-  digitalWrite(RUNNING, HIGH);
-  ETout.sendData();
+  inletFluidTemperature = inletFluidTemperature*weight + instantInletFluidTemperature*(1-weight);
 }
 
 // Decode the serial from MATLAB and update variable values
