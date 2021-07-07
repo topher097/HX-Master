@@ -128,6 +128,9 @@ void sendData(){
     Serial.print(slaveData.phase2);             Serial.print(',');
     Serial.print(slaveData.enable1);            Serial.print(',');
     Serial.print(slaveData.enable2);            Serial.print(',');
+    Serial.print(Kp);                           Serial.print(',');
+    Serial.print(Kd);                           Serial.print(',');
+    Serial.print(Ki);                           Serial.print(',');
     Serial.print(endTesting);                 
     Serial.write(13);   // Carriage return "CR"
     Serial.write(10);   // Linefeed "LF"
@@ -213,7 +216,7 @@ void updateLCD(){
   lcd.setCursor(0, 0);
   lcd.print((String)(inletFlowRate));
   lcd.setCursor(6, 0);
-  lcd.print("mL/min, " + (String)(round((valveRotation/((float)maxRotation - (float)minRotation))*100)) + "%   ");
+  lcd.print("mL/min, " + (String)(int(percentOpen*100)) + "%   ");
   lcd.setCursor(0, 1);
   lcd.print("Fluid temp: " + (String)inletFluidTemperature + " C");
   lcd.setCursor(0, 2);
@@ -231,27 +234,26 @@ void getData(){
   float instantOutletPressureLiquid = calcPressure((float)analogRead(P4)/maxAnalog*3.3);       // psi
 
   // Take weighted average of pressure readings
-  float weight = 0.1;
+  float weight = 0.3;
   inletPressureUpstream = inletPressureUpstream*weight + instantInletPressureUpstream*(1-weight);
-  inletPressureUpstream = 45 + rand()/RAND_MAX;     // for testing
+  inletPressureUpstream = 45 + rand()/RAND_MAX;         // for testing
   inletPressureDownstream = inletPressureDownstream*weight + instantInletPressureDownstream*(1-weight);
-  inletPressureDownstream = 14.5 + rand()/RAND_MAX;    // for testing
+  inletPressureDownstream = 14.5 + rand()/RAND_MAX;     // for testing
   outletPressureVapor = outletPressureVapor*weight + instantOutletPressureVapor*(1-weight);
   outletPressureLiquid = outletPressureLiquid*weight + instantOutletPressureLiquid*(1-weight);
 
   // Calculate the inlet flow rate
-  weight = 0.1;
-  // Note, if need to flip direction, do maxAnalog-analogRead(POT)
+  weight = 0.3;
   int16_t potRead = analogRead(POT);                                        // Get reading from valve potentiometer
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
-  float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream);    // mL/min
+  float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream, valveRotation);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
 
   // Read and calculate heater module temps
   float instantHeaterTemperature1 = calcTempHeaterModuleThermistor((float)analogRead(HMT1)/maxAnalog*3.3);     // degree celcius
   
   // Take weighted average of heater temps
-  weight = 0.1;
+  weight = 0.3;
   heaterTemperature1 = heaterTemperature1*weight + instantHeaterTemperature1*(1-weight);
   heaterTemperature2 = heaterTemperature1;
   heaterTemperature3 = heaterTemperature1;
@@ -265,7 +267,7 @@ void getData(){
   float instantBoilSurfaceTemperature4 = calcTempBoilSurfaceThermistor((float)analogRead(BST4)/maxAnalog*3.3);    // degree celcius
 
   // Take weighted average of boil surface temps
-  weight = 0.1;
+  weight = 0.3;
   boilSurfaceTemperature1 = boilSurfaceTemperature1*weight + instantBoilSurfaceTemperature1*(1-weight);
   boilSurfaceTemperature2 = boilSurfaceTemperature2*weight + instantBoilSurfaceTemperature2*(1-weight);
   boilSurfaceTemperature3 = boilSurfaceTemperature3*weight + instantBoilSurfaceTemperature3*(1-weight);
@@ -328,6 +330,9 @@ void decodeMATLABSerial(string inputString){
   targetFluidTemperature  = v[i];         i++;
   enableHeaters           = (int)v[i];    i++;
   enableRopeHeater        = (int)v[i];    i++;
+  Kp                      = v[i];         i++;
+  Kd                      = v[i];         i++;
+  Ki                      = v[i];         i++;
   endTesting              = (int)v[i];
 }
 
@@ -432,7 +437,7 @@ void loop() {
     testTimePrint = testTime * 0.001;                       // Current test time in seconds 
     dataStartTime = millis();                               // Restart timer for data
     sendData();                                             // Send data to MATLAB
-    //checkThermalRunaway();                                  // Check that all heating elements are safe
+    checkThermalRunaway();                                  // Check that all heating elements are safe
   }
 
   // Start or stop test
