@@ -39,14 +39,15 @@ float calcInletFlowRate(float V, float pressureUpstream, float pressureDownstrea
   // Calculate the Cv value given vector and the rotation of the pot
   //percentOpen = V/((float)maxRotation - (float)minRotation);                  // percent the valve is open 0-1
   percentOpen = (map(potValue, minRotation, maxRotation, 0, 100))/100;
-  float valveRotation = (cv1.size()-1)*percentOpen;
+  float valveRotation = (cv4.size()-1)*percentOpen;
   uint16_t upperRotation = ceil(valveRotation);    // index of lower Cv value index
   uint16_t lowerRotation = floor(valveRotation);   // index of upper Cv value index
-  float upperValveCv = cv2[upperRotation];                  // lower value of Cv
-  float lowerValveCv = cv2[lowerRotation];                  // upper value of Cv
+  float upperValveCv = cv4[upperRotation];                  // lower value of Cv
+  float lowerValveCv = cv4[lowerRotation];                  // upper value of Cv
   float valveCv = lowerValveCv + ((valveRotation-lowerRotation)*(upperValveCv - lowerValveCv))/(upperRotation - lowerRotation);   // linear interpolation of Cv value
   float galpermin_to_mlpermin = 3785.41;                    // 1 gal/min is 3785.41 mL/min
-  float sg = 1.54;                                          // fluid specific gravity
+  //float sg = 1.54;                                          // fluid specific gravity
+  float sg = 1.0;                                           // water specific gravity
   inletFlowRate = valveCv * sqrt(abs(inletPressureUpstream - inletPressureDownstream)/sg);            // gal/min
   if (isnan(inletFlowRate) || inletFlowRate < 0.0){inletFlowRate = 0.0;}
   return inletFlowRate * galpermin_to_mlpermin;             // mL/min

@@ -7,7 +7,7 @@ namespace ropePIDvars
     double Setpoint, Input, Output;
 
     // Define the constants
-    double Kp=1, Ki=0.05, Kd=0.25;
+    double Kp=10, Ki=0.0, Kd=0.25;
 }
 
 #endif

@@ -73,9 +73,13 @@ namespace varDefinitions
     bool safeHeater = true;
     bool safeBoilSurface = true;
     bool safeInletTemp = true;
-    float heaterMaxTemp = 210.0;        // degree celcius
-    float boilSurfaceMaxTemp = 90.0;    // degree celcius
-    float inletMaxTemp = 65;            // degree celcius
+    //float heaterMaxTemp = 300.0;        // degree celcius
+    //float boilSurfaceMaxTemp = 80.0;    // degree celcius
+    //float inletMaxTemp = 65;            // degree celcius
+
+    float heaterMaxTemp = 300.0;        // degree celcius
+    float boilSurfaceMaxTemp = 150.0;    // degree celcius
+    float inletMaxTemp = 95;            // degree celcius
 
     // Blink vars
     int ledState = LOW;

@@ -499,10 +499,46 @@ void loop() {
   }
 
   // Control rope heater
-  if (enableRopeHeater && endTesting==0){  
-    Input = inletFluidTemperature;
-    myPID.Compute();
-    analogWrite(RHD, Output);
+  if (enableRopeHeater && endTesting==0){
+    float tempDifference = targetFluidTemperature - inletFluidTemperature;
+    if (tempDifference >= 7.5){
+      analogWrite(RHD, 255);
+    }
+    else if (tempDifference >= 5){
+      analogWrite(RHD, 240);
+    }
+    else if (tempDifference >= 1){
+      analogWrite(RHD, 225);
+    }
+    else if (tempDifference >= 0.5){
+      analogWrite(RHD, 210);
+    }
+    else if (tempDifference >= 0.25){
+      analogWrite(RHD, 200);
+    }
+    else if (tempDifference >= 0){
+      analogWrite(RHD, 175);
+    }
+    else if (tempDifference >= -0.5){
+      analogWrite(RHD, 160);
+    }
+    else{
+      analogWrite(RHD, 0);
+    }
+
+      
+    // myPID.SetTunings(Kp, Ki, Kd);
+    // Setpoint = targetFluidTemperature;
+    // Input = inletFluidTemperature;
+    // myPID.Compute();
+    // analogWrite(RHD, Output);
+
+    // if (targetFluidTemperature > inletFluidTemperature){
+    //   analogWrite(RHD, 255);
+    // }
+    // else{
+    //   analogWrite(RHD, 0);
+    // }
   }
   else{
     analogWrite(RHD, 0);    // Turn off the rope heater
