@@ -275,6 +275,7 @@ void getData(){
   // Calculate the inlet flow rate
   weight = 0.3;
   int16_t potRead = analogRead(POT);                                        // Get reading from valve potentiometer
+  //Serial.println(potRead);
   valveRotation = valveRotation*weight + potRead*(1-weight);                // Take weighted average of pot of reading to smooth
   float instantFlowRate = calcInletFlowRate((float)valveRotation/maxAnalog*3.3, inletPressureUpstream, inletPressureDownstream, valveRotation);    // mL/min
   inletFlowRate = inletFlowRate*weight + instantFlowRate*(1-weight);
