@@ -55,7 +55,7 @@ namespace varDefinitions
     vector<float> cv4 = {0.0, 0.0236, 0.0443, 0.0635, 0.0814, 0.0980, 0.1133, 0.1273, 0.1402, 0.1520, 0.1628, 0.1720, 0.1812, 0.1886, 0.1960, 0.2018, 0.2075, 0.2119, 0.2162, 0.2201, 0.2240};       // Cv for valve 4
 
     // Logging vars
-    uint16_t dataDelay = 50;               // time between data read and transfer in milliseconds
+    uint16_t dataDelay = 250;               // time between data read and transfer in milliseconds
     uint64_t dataStartTime;                 // start time after data read and sent
     uint64_t testTime;                      // time since program started in milliseconds
     uint64_t testTimeStart;                 // time of when program starts

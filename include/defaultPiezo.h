@@ -11,7 +11,7 @@ namespace defaultPiezoProperties
     float default_phase2 = 0.0;         // Phase of right channel signal in degrees
     int default_enable1 = HIGH;          // Enable pin for piezo driver 1
     int default_enable2 = HIGH;          // Enable pin for piezo driver 2
-    int v_mult = 110;                   // Multiplier of amplitude to get V p-p
+    int v_mult = 95;                   // Multiplier of amplitude to get V p-p
 }
 
 #endif
