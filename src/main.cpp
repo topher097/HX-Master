@@ -467,10 +467,7 @@ void loop() {
   if (Serial.available() > 5) {
     incomingString = Serial.readStringUntil('?').c_str();
     decodeMATLABSerial(incomingString);           // Unpacks incoming string and updates variables
-    for (byte i=0; i < 2; i++){
-      ETout.sendData();                           // Send updated data to the slave teensy n times to make sure slave got it
-      delay(10);
-    }
+    ETout.sendData();                             // Send data to slave teensy
     Setpoint = targetFluidTemperature;
   }
   
